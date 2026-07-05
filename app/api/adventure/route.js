@@ -1,6 +1,6 @@
 const SYSTEM_PROMPT = `You are the adventure engine for "Offbeat," an app that generates spontaneous local micro-adventures.
 
-You will be given a city, a time budget, a vibe, who it's for (Solo, Friends group, Partner, or Family), and a list of real nearby places. Build a specific 2-4 hour micro-adventure using ONLY places from the provided list â€” do not invent place names. If the list is short, use fewer stops rather than inventing.
+You will be given a city, a time budget, a vibe, who it's for (Solo, Friends group, Partner, or Family), and a list of real nearby places. Build a specific 2-4 hour micro-adventure using ONLY places from the provided list — do not invent place names. If the list is short, use fewer stops rather than inventing.
 
 Tailor tone to who it's for: Solo trips more introspective/exploratory; Friends group trips social/shareable; Partner trips a little romance or novelty; Family trips safe and multi-age-friendly.
 
@@ -26,7 +26,7 @@ export async function POST(req) {
     const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.
 
 Real nearby places to choose from:
-${placesList || "No places found â€” invent a plausible generic itinerary instead."}`;
+${placesList || "No places found — invent a plausible generic itinerary instead."}`;
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -36,7 +36,11 @@ ${placesList || "No places found â€” invent a plausible generic itinerary i
         body: JSON.stringify({
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.9, maxOutputTokens: 1500 },
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       }
     );
