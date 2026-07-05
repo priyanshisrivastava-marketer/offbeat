@@ -33,8 +33,10 @@ function AuthForm({ onAuthed }) {
     setLoading(true);
     setError("");
     try {
-      const fn = mode === "signin" ? supabase.auth.signInWithPassword : supabase.auth.signUp;
-      const { data, error: authError } = await fn({ email, password });
+      const { data, error: authError } =
+        mode === "signin"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
       if (authError) throw authError;
       if (mode === "signup" && !data.session) {
         setError("Check your email to confirm your account, then sign in.");
