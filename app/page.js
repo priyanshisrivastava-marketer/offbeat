@@ -181,6 +181,7 @@ function CompletedTab({ userId }) {
 export default function Home() {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [tab, setTab] = useState("new");
 
   const [city, setCity] = useState("");
@@ -201,14 +202,20 @@ export default function Home() {
 
   useEffect(() => {
     if (!session) return;
+    setProfileLoading(true);
     (async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-      setProfile(data);
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      setProfile(data || {});
       if (data) {
         if (data.default_city) setCity(data.default_city);
         if (data.favorite_vibe) setVibe(data.favorite_vibe);
         if (data.favorite_companion) setCompanion(data.favorite_companion);
       }
+      setProfileLoading(false);
     })();
   }, [session]);
 
@@ -316,7 +323,7 @@ export default function Home() {
     );
   }
 
-  if (profile === null) {
+  if (profileLoading) {
     return (
       <div style={{ ...bgStyle, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
         {globalStyles}
