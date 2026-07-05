@@ -29,14 +29,14 @@ Real nearby places to choose from:
 ${placesList || "No places found — invent a plausible generic itinerary instead."}`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.9, maxOutputTokens: 800 },
+          generationConfig: { temperature: 0.9, maxOutputTokens: 1500 },
         }),
       }
     );
