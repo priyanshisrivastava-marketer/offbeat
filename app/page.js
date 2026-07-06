@@ -266,6 +266,7 @@ export default function Home() {
       city,
       vibe,
       companion,
+      stops: adventure.stops,
     });
     setJustCompleted(true);
   };
