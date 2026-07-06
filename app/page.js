@@ -168,6 +168,26 @@ function CompletedTab({ userId }) {
           <p style={{ margin: "4px 0 8px", opacity: 0.6, fontSize: "0.82rem" }}>
             {a.city} · {new Date(a.completed_at).toLocaleDateString()}
           </p>
+            {a.stops?.map((s, i) => (
+  <a
+    key={i}
+    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      `${s.name}, ${a.city}`
+    )}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "block",
+      margin: "4px 0",
+      color: "#2B6E6B",
+      fontSize: "0.78rem",
+      fontWeight: 700,
+      textDecoration: "none"
+    }}
+  >
+    📍 {s.name} ↗
+  </a>
+))}
           <div style={{ display: "flex", gap: "8px" }}>
             <span style={{ background: "#2B6E6B14", color: "#2B6E6B", fontSize: "0.72rem", fontWeight: 700, padding: "3px 10px", borderRadius: "999px" }}>{a.vibe}</span>
             <span style={{ background: "#E8A33D22", color: "#8a5c1c", fontSize: "0.72rem", fontWeight: 700, padding: "3px 10px", borderRadius: "999px" }}>{a.companion}</span>
