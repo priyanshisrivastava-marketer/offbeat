@@ -352,7 +352,14 @@ export default function Home() {
     letterSpacing: "0.04em",
   }}
 >
+  <a
+  href="https://priyanshisrivastava-marketer.github.io/priyanshi-srivastava.github.io/"
+  target="_blank"
+  rel="noopener noreferrer"
+  style={{ color: "inherit", textDecoration: "none" }}
+>
   By Priyanshi Srivastava
+</a>
 </p>
 
           </div>
