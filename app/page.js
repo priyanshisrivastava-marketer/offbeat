@@ -353,7 +353,7 @@ export default function Home() {
   }}
 >
   <a
-  href="https://priyanshisrivastava-marketer.github.io/priyanshi-srivastava.github.io/"
+  href="https://priyanshisrivastava-marketer.github.io/"
   target="_blank"
   rel="noopener noreferrer"
   style={{ color: "inherit", textDecoration: "none" }}
