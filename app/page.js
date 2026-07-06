@@ -256,7 +256,10 @@ export default function Home() {
 
       const advRes = await fetch("/api/adventure", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${session.access_token}`,
+},
         body: JSON.stringify({ city, duration, vibe, companion, places: placesData.places }),
       });
       const advData = await advRes.json();
