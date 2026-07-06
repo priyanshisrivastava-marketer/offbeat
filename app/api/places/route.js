@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 const VIBE_KEYWORDS = {
   Chill: "cozy cafe park quiet spot",
   Social: "popular bar rooftop lively spot",
@@ -7,7 +8,35 @@ const VIBE_KEYWORDS = {
 
 export async function POST(req) {
   try {
-    const { city, vibe } = await req.json();
+   
+    const authHeader = req.headers.get("authorization");
+
+if (!authHeader?.startsWith("Bearer ")) {
+  return Response.json(
+    { error: "Unauthorized" },
+    { status: 401 }
+  );
+}
+
+const token = authHeader.slice(7);
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const {
+  data: { user },
+  error: authError,
+} = await supabase.auth.getUser(token);
+
+if (authError || !user) {
+  return Response.json(
+    { error: "Unauthorized" },
+    { status: 401 }
+  );
+}
+     const { city, vibe } = await req.json();
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
     if (!apiKey) {
