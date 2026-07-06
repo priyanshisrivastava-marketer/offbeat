@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 const SYSTEM_PROMPT = `You are the adventure engine for "Offbeat," an app that generates spontaneous local micro-adventures.
 
 You will be given a city, a time budget, a vibe, who it's for (Solo, Friends group, Partner, or Family), and a list of real nearby places. Build a specific 2-4 hour micro-adventure using ONLY places from the provided list — do not invent place names. If the list is short, use fewer stops rather than inventing.
@@ -15,6 +16,33 @@ Output ONLY valid JSON, no markdown fences, no prose, in this exact shape:
 
 export async function POST(req) {
   try {
+    const authHeader = req.headers.get("authorization");
+
+if (!authHeader?.startsWith("Bearer ")) {
+  return Response.json(
+    { error: "Unauthorized" },
+    { status: 401 }
+  );
+}
+
+const token = authHeader.slice(7);
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const {
+  data: { user },
+  error: authError,
+} = await supabase.auth.getUser(token);
+
+if (authError || !user) {
+  return Response.json(
+    { error: "Unauthorized" },
+    { status: 401 }
+  );
+}
     const { city, duration, vibe, companion, places } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
 
