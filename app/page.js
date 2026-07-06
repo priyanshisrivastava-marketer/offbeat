@@ -448,6 +448,24 @@ export default function Home() {
                         <div style={{ flexShrink: 0, width: "26px", height: "26px", borderRadius: "50%", background: "#1A1A1A", color: "#fff", fontSize: "0.75rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</div>
                         <div>
                           <p style={{ margin: 0, fontWeight: 700 }}>{s.name}</p>
+                      <a
+  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${s.name}, ${city}`
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  style={{
+    display: "inline-block",
+    marginTop: "4px",
+    marginBottom: "4px",
+    color: "#2B6E6B",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    textDecoration: "none"
+  }}
+>
+  📍 Open in Maps ↗
+</a>
                           <p style={{ margin: "2px 0 0", opacity: 0.7, fontSize: "0.85rem" }}>{s.description}</p>
                         </div>
                       </div>
