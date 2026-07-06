@@ -316,6 +316,18 @@ export default function Home() {
           <div style={{ textAlign: "center", marginBottom: "24px" }}>
             <h1 style={{ fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-0.03em", margin: 0 }}>Offbeat</h1>
             <p style={{ opacity: 0.6, marginTop: "6px" }}>A ticket out the door, whenever you need one.</p>
+    <p
+  style={{
+    margin: "4px 0 0",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    opacity: 0.55,
+    letterSpacing: "0.04em",
+  }}
+>
+  By Priyanshi Srivastava
+</p>
+
           </div>
           <AuthForm onAuthed={setSession} />
         </div>
