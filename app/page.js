@@ -355,6 +355,18 @@ export default function Home() {
             ✨ Welcome back, {profile.name}
           </div>
           <h1 style={{ fontSize: "2.1rem", fontWeight: 800, letterSpacing: "-0.03em", margin: 0 }}>Offbeat</h1>
+              <p
+  style={{
+    margin: "4px 0 0",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    opacity: 0.55,
+    letterSpacing: "0.04em"
+  }}
+>
+  By Priyanshi Srivastava
+</p>
+
           <button onClick={signOut} style={{ background: "none", border: "none", textDecoration: "underline", opacity: 0.5, fontSize: "0.8rem", marginTop: "6px", cursor: "pointer" }}>
             Sign out
           </button>
