@@ -247,10 +247,13 @@ export default function Home() {
     setJustCompleted(false);
     try {
       const placesRes = await fetch("/api/places", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city, vibe }),
-      });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${session.access_token}`,
+  },
+  body: JSON.stringify({ city, vibe }),
+});
       const placesData = await placesRes.json();
       if (placesData.error) throw new Error(placesData.error);
 
