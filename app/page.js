@@ -1,106 +1,386 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebaseClient";
+import styles from "./page.module.css";
 
 const DURATIONS = ["2 hours", "4 hours"];
-const VIBES = [{ label: "Chill", icon: "🌿" }, { label: "Social", icon: "🎉" }, { label: "Adventurous", icon: "🧭" }, { label: "Creative", icon: "🎨" }];
-const COMPANIONS = [{ label: "Solo", icon: "🚶" }, { label: "Friends group", icon: "👯" }, { label: "Partner", icon: "💞" }, { label: "Family", icon: "👨‍👩‍👧" }];
+const VIBES = [
+  { label: "Chill", icon: "🌿" },
+  { label: "Social", icon: "🎉" },
+  { label: "Adventurous", icon: "🧭" },
+  { label: "Creative", icon: "🎨" },
+];
+const COMPANIONS = [
+  { label: "Solo", icon: "🚶" },
+  { label: "Friends group", icon: "👯" },
+  { label: "Partner", icon: "💞" },
+  { label: "Family", icon: "👨‍👩‍👧" },
+];
+const HEROES = [
+  { src: "/landing/mcleod-gang.jpg", kicker: "Wander differently", title: "Go somewhere. Feel something.", text: "Offbeat turns a few free hours into a little adventure, without the planning spiral." },
+  { src: "/landing/himalayan-art.jpg", kicker: "Look closer", title: "Take the interesting route.", text: "Find local corners, tiny discoveries and places that feel like they were meant for you." },
+  { src: "/landing/temple.jpg", kicker: "Slow down", title: "Make time for wonder.", text: "A spontaneous detour can become the best part of your day." },
+  { src: "/landing/beach-wide.jpg", kicker: "Get out", title: "Your next two hours await.", text: "Tell us your city, your mood and your time. We will build the ticket." },
+  { src: "/landing/beach-shell.jpg", kicker: "Small moments", title: "Not every adventure needs a plan.", text: "Sometimes it is coffee, a walk, a view and nowhere else to be." },
+  { src: "/landing/himalayan-view.jpg", kicker: "Go offbeat", title: "Leave the ordinary behind.", text: "Explore nearby places you might never have thought to visit." },
+];
 
-function ticketCode() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
-
-const styles = {
-  bg: { minHeight: "100vh", fontFamily: "system-ui, -apple-system, sans-serif", background: "radial-gradient(circle at 15% 0%, #FDEBD0 0%, transparent 45%), radial-gradient(circle at 100% 20%, #DCEDEA 0%, transparent 40%), #F5F6F3" },
-  card: { background: "#fff", borderRadius: "18px", padding: "24px", boxShadow: "0 16px 40px -16px rgba(26,26,26,0.18)" },
-  input: { width: "100%", padding: "12px", borderRadius: "12px", border: "2px solid #1A1A1A22", boxSizing: "border-box" },
-};
+function ticketCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 
 async function apiFetch(path, user, options = {}) {
-  const token = await user.getIdToken();
-  const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
+  const response = await fetch(path, { ...options, headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) throw new Error(data.error || "Request failed");
   return data;
 }
 
-function GoogleLogin({ loading, onError }) {
-  const login = async () => { try { await signInWithPopup(auth, googleProvider); } catch (e) { onError(e?.message || "Google sign-in failed. Please try again."); } };
-  return <button onClick={login} disabled={loading} style={{ width: "100%", padding: "14px", borderRadius: "12px", fontWeight: 800, background: "#fff", border: "2px solid #1A1A1A18", color: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", cursor: "pointer", opacity: loading ? 0.6 : 1 }}><span style={{ fontSize: "1.1rem" }}>G</span>{loading ? "Signing in..." : "Continue with Google"}</button>;
+function Logo({ small = false }) {
+  return (
+    <img
+      className={small ? styles.miniBrand : styles.brand}
+      src="/brand/offbeat-mark.png"
+      alt="Offbeat"
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+      }}
+    />
+  );
 }
 
-function AuthScreen() {
-  const [error, setError] = useState("");
+function GoogleButton({ onError, compact = false }) {
   const [loading, setLoading] = useState(false);
-  return <div style={{ ...styles.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}><div style={{ width: "100%", maxWidth: 360 }}><div style={{ textAlign: "center", marginBottom: 24 }}><h1 style={{ fontSize: "2.2rem", fontWeight: 800, margin: 0 }}>Offbeat</h1><p style={{ opacity: 0.6, marginTop: 6 }}>A ticket out the door, whenever you need one.</p><p style={{ margin: "4px 0 0", fontSize: ".78rem", fontWeight: 600, opacity: 0.55 }}>By Priyanshi Srivastava</p></div><div style={styles.card}><h2 style={{ margin: "0 0 8px", fontSize: "1.2rem" }}>Ready to go somewhere?</h2><p style={{ margin: "0 0 18px", opacity: 0.6, fontSize: ".88rem" }}>Sign in with Google to save your adventures and preferences.</p><GoogleLogin loading={loading} onError={(message) => { setLoading(false); setError(message); }} />{error && <p style={{ color: "#B4483A", fontSize: ".82rem", marginTop: 12 }}>{error}</p>}</div></div></div>;
+  const login = async () => {
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      onError?.(error?.message || "Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <button className={compact ? styles.google : styles.primary} onClick={login} disabled={loading}>
+      {loading ? "Opening Google..." : "Continue with Google"}
+    </button>
+  );
 }
 
-function ProfileSetup({ user, onDone }) {
+function Landing({ onGuest }) {
+  const [slide, setSlide] = useState(0);
+  const [authError, setAuthError] = useState("");
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSlide((current) => (current + 1) % HEROES.length), 4500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const hero = HEROES[slide];
+
+  return (
+    <main className={styles.landing}>
+      <div className={styles.landingInner}>
+        <div className={styles.topbar}>
+          <Logo />
+          <span className={styles.topLink}>For curious people</span>
+        </div>
+
+        <section className={styles.hero} aria-label="Offbeat travel inspiration">
+          <img
+            key={hero.src}
+            className={styles.heroImage}
+            src={hero.src}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.style.opacity = "0";
+            }}
+          />
+          <div className={styles.heroShade} />
+          <div className={styles.heroCopy}>
+            <span className={styles.eyebrow}>✦ {hero.kicker}</span>
+            <h1 className={styles.heroTitle}>{hero.title}</h1>
+            <p className={styles.heroText}>{hero.text}</p>
+            <div className={styles.dots} aria-label="Hero slides">
+              {HEROES.map((item, index) => (
+                <button key={item.src} className={`${styles.dot} ${index === slide ? styles.dotActive : ""}`} onClick={() => setSlide(index)} aria-label={`Show slide ${index + 1}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <div className={styles.walk} aria-hidden="true">
+          <span className={styles.walkStep}>●</span><span className={styles.walkStep}>●</span><span className={styles.walkStep}>●</span><span className={styles.walkStep}>●</span>
+          <span className={styles.walkLine} />
+          <span>take the next step</span>
+        </div>
+
+        <div className={styles.ctaRow}>
+          <GoogleButton onError={setAuthError} />
+          <button className={styles.secondary} onClick={onGuest}>Explore without signing in</button>
+        </div>
+        {authError && <p className={styles.error}>{authError}</p>}
+        <p className={styles.trust}>🔒 Your sign-in is only used to save your profile and adventures. Guest mode does not save anything.</p>
+      </div>
+    </main>
+  );
+}
+
+function AuthGate({ user, onDone }) {
   const [name, setName] = useState(user.displayName || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const save = async () => {
-    const cleanName = name.trim(); if (!cleanName) return; setLoading(true); setError("");
-    try { const data = await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: cleanName }) }); onDone(data.profile || { name: cleanName, email: user.email || "", photoURL: user.photoURL || "" }); }
-    catch (e) { setError(e?.message || "Could not save your profile. Please try again."); }
-    finally { setLoading(false); }
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: cleanName }) });
+      onDone(data.profile || { name: cleanName, email: user.email || "", photoURL: user.photoURL || "" });
+    } catch (err) {
+      setError(err?.message || "Could not save your profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
-  return <div style={{ ...styles.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}><div style={{ width: "100%", maxWidth: 360 }}><div style={{ textAlign: "center", marginBottom: 24 }}><h1 style={{ fontSize: "2.2rem", margin: 0 }}>Offbeat</h1></div><div style={styles.card}><label style={{ fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", opacity: 0.6, display: "block", marginBottom: 8 }}>What's your name?</label><input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} placeholder="e.g. Priya" style={{ ...styles.input, marginBottom: 16 }} /><button onClick={save} disabled={loading} style={{ width: "100%", padding: 14, borderRadius: 12, fontWeight: 800, background: "linear-gradient(135deg,#E8A33D,#D98A2A)", border: "none" }}>{loading ? "Saving..." : "Let's go"}</button>{error && <p style={{ color: "#B4483A", fontSize: ".78rem", marginTop: 10 }}>{error}</p>}</div></div></div>;
+
+  return (
+    <main className={styles.authCard}>
+      <div className={styles.authInner}>
+        <Logo />
+        <p className={styles.hello}>One tiny detail before you go.</p>
+        <div className={styles.panel}>
+          <label className={styles.label} htmlFor="name">What should Offbeat call you?</label>
+          <input id="name" className={`${styles.input} ${styles.profileInput}`} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && save()} placeholder="e.g. Priya" autoFocus />
+          <button className={styles.generate} onClick={save} disabled={loading}>{loading ? "Saving..." : "Let's go"}</button>
+          {error && <p className={styles.error}>{error}</p>}
+        </div>
+      </div>
+    </main>
+  );
 }
 
 function CompletedTab({ user, refreshKey }) {
-  const [items, setItems] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  useEffect(() => { let active = true; setLoading(true); setError(""); apiFetch("/api/completed", user).then((data) => { if (active) setItems(data.items || []); }).catch((e) => { if (active) { setItems([]); setError(e?.message || "Could not load completed adventures."); } }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [user, refreshKey]);
-  if (loading) return <p style={{ textAlign: "center", opacity: 0.6, marginTop: "2rem" }}>Loading your adventures...</p>;
-  if (error) return <p style={{ textAlign: "center", color: "#B4483A", marginTop: "2rem" }}>{error}</p>;
-  if (!items.length) return <div style={{ textAlign: "center", marginTop: "3rem" }}><p style={{ fontSize: "2.5rem", marginBottom: 8 }}>🗺️</p><p style={{ opacity: 0.6, fontWeight: 600 }}>No adventures completed yet.</p></div>;
-  return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{items.map((a) => <div key={a.id} style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", boxShadow: "0 8px 20px -12px rgba(26,26,26,.2)" }}><div style={{ display: "flex", justifyContent: "space-between" }}><p style={{ margin: 0, fontWeight: 800 }}>{a.title}</p><span style={{ fontSize: ".7rem", color: "#2B6E6B", fontWeight: 700 }}>✓ Done</span></div><p style={{ margin: "4px 0 8px", opacity: 0.6, fontSize: ".82rem" }}>{a.city} · {a.completedAt ? new Date(a.completedAt).toLocaleDateString() : "Completed"}</p>{a.stops?.map((s, i) => <a key={i} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.name}, ${a.city}`)}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", margin: "4px 0", color: "#2B6E6B", fontSize: ".78rem", fontWeight: 700, textDecoration: "none" }}>📍 {s.name} ↗</a>)}<div style={{ display: "flex", gap: 8, marginTop: 8 }}><span style={{ background: "#2B6E6B14", color: "#2B6E6B", fontSize: ".72rem", fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{a.vibe}</span><span style={{ background: "#E8A33D22", color: "#8a5c1c", fontSize: ".72rem", fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{a.companion}</span></div></div>)}</div>;
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    apiFetch("/api/completed", user)
+      .then((data) => active && setItems(data.items || []))
+      .catch((err) => active && setError(err?.message || "Could not load completed adventures."))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [user, refreshKey]);
+
+  if (loading) return <div className={styles.empty}>Loading your adventures...</div>;
+  if (error) return <div className={styles.error}>{error}</div>;
+  if (!items.length) return <div className={styles.empty}>🗺️<br />No adventures completed yet.</div>;
+
+  return (
+    <div>
+      {items.map((adventure) => (
+        <article className={styles.ticket} key={adventure.id}>
+          <div className={styles.ticketTop}>
+            <div className={styles.ticketCode}>COMPLETED · {adventure.city}</div>
+            <h2 className={styles.ticketTitle}>{adventure.title}</h2>
+          </div>
+          <div className={styles.stops}>
+            {(adventure.stops || []).map((stop, index) => (
+              <div className={styles.stop} key={`${stop.name}-${index}`}>
+                <span className={styles.stopNum}>{index + 1}</span><strong>{stop.name}</strong><br />
+                <a className={styles.map} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stop.name}, ${adventure.city}`)}`} target="_blank" rel="noopener noreferrer">Open in Maps ↗</a>
+              </div>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 }
 
-export default function Home() {
-  const [user, setUser] = useState(undefined); const [profile, setProfile] = useState(null); const [profileLoading, setProfileLoading] = useState(true); const [tab, setTab] = useState("new"); const [city, setCity] = useState(""); const [duration, setDuration] = useState(DURATIONS[0]); const [vibe, setVibe] = useState(VIBES[0].label); const [companion, setCompanion] = useState(COMPANIONS[0].label); const [loading, setLoading] = useState(false); const [adventure, setAdventure] = useState(null); const [errorMsg, setErrorMsg] = useState(""); const [justCompleted, setJustCompleted] = useState(false); const [completedRefresh, setCompletedRefresh] = useState(0); const [code] = useState(ticketCode());
-
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
-  useEffect(() => {
-    if (!user) { setProfile(null); setProfileLoading(false); return; }
-    let active = true; setProfileLoading(true);
-    apiFetch("/api/profile", user).then((data) => { if (!active) return; const fallback = { name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" }; const merged = { ...fallback, ...(data.profile || {}) }; setProfile(merged); if (merged.defaultCity) setCity(merged.defaultCity); if (merged.favoriteVibe) setVibe(merged.favoriteVibe); if (merged.favoriteCompanion) setCompanion(merged.favoriteCompanion); }).catch(() => { if (active) setProfile({ name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" }); }).finally(() => { if (active) setProfileLoading(false); });
-    return () => { active = false; };
-  }, [user]);
+function Generator({ user, profile, onLogout }) {
+  const [tab, setTab] = useState("new");
+  const [city, setCity] = useState(profile?.defaultCity || "");
+  const [duration, setDuration] = useState(DURATIONS[0]);
+  const [vibe, setVibe] = useState(profile?.favoriteVibe || VIBES[0].label);
+  const [companion, setCompanion] = useState(profile?.favoriteCompanion || COMPANIONS[0].label);
+  const [adventure, setAdventure] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [justCompleted, setJustCompleted] = useState(false);
+  const [completedRefresh, setCompletedRefresh] = useState(0);
+  const code = useMemo(ticketCode, []);
 
   const generate = async () => {
-    if (!city.trim()) return; setLoading(true); setErrorMsg(""); setAdventure(null); setJustCompleted(false);
+    if (!city.trim()) return;
+    setLoading(true);
+    setErrorMsg("");
+    setAdventure(null);
+    setJustCompleted(false);
     try {
-      const token = await user.getIdToken();
-      const placesRes = await fetch("/api/places", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ city, vibe }) });
-      const placesData = await placesRes.json(); if (!placesRes.ok || placesData.error) throw new Error(placesData.error || "Could not find places.");
-      const advRes = await fetch("/api/adventure", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ city, duration, vibe, companion, places: placesData.places }) });
-      const advData = await advRes.json(); if (!advRes.ok || advData.error) throw new Error(advData.error || "Could not create an adventure."); setAdventure(advData.adventure);
-      try { await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: profile?.name || user.displayName || "", defaultCity: city, favoriteVibe: vibe, favoriteCompanion: companion }) }); } catch (e) { console.warn("Could not sync preferences:", e); }
-    } catch (e) { setErrorMsg(e?.message || "Something went wrong. Please try again."); } finally { setLoading(false); }
+      const placesData = await apiFetch("/api/places", user, { method: "POST", body: JSON.stringify({ city, vibe }) });
+      const advData = await apiFetch("/api/adventure", user, { method: "POST", body: JSON.stringify({ city, duration, vibe, companion, places: placesData.places }) });
+      setAdventure(advData.adventure);
+      if (user) {
+        try {
+          await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: profile?.name || user.displayName || "", defaultCity: city, favoriteVibe: vibe, favoriteCompanion: companion }) });
+        } catch (err) {
+          console.warn("Could not sync preferences", err);
+        }
+      }
+    } catch (err) {
+      setErrorMsg(err?.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const markCompleted = async () => {
-    if (!adventure || justCompleted) return; setErrorMsg("");
-    try { await apiFetch("/api/completed", user, { method: "POST", body: JSON.stringify({ title: adventure.title, city, vibe, companion, stops: adventure.stops }) }); setJustCompleted(true); setCompletedRefresh((n) => n + 1); }
-    catch (e) { setErrorMsg(e?.message || "Could not save this adventure right now. Please try again."); }
+    if (!user || !adventure || justCompleted) return;
+    setErrorMsg("");
+    try {
+      await apiFetch("/api/completed", user, { method: "POST", body: JSON.stringify({ title: adventure.title, city, vibe, companion, stops: adventure.stops }) });
+      setJustCompleted(true);
+      setCompletedRefresh((value) => value + 1);
+    } catch (err) {
+      setErrorMsg(err?.message || "Could not save this adventure right now. Please try again.");
+    }
   };
-  const reset = () => { setAdventure(null); setErrorMsg(""); setJustCompleted(false); };
-  const logout = async () => { await signOut(auth); setProfile(null); setAdventure(null); };
 
-  if (user === undefined) return <div style={{ ...styles.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ opacity: 0.5 }}>Loading...</p></div>;
-  if (!user) return <AuthScreen />;
-  if (profileLoading) return <div style={{ ...styles.bg, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ opacity: 0.5 }}>Loading profile...</p></div>;
-  if (!profile?.name) return <ProfileSetup user={user} onDone={setProfile} />;
+  return (
+    <main className={styles.generatorWrap}>
+      <div className={styles.generator}>
+        <header className={styles.appHeader}>
+          <Logo small />
+          <div>
+            <div className={styles.hello}>{user ? `Hi, ${profile?.name || user.displayName || "there"}` : "Guest mode"}</div>
+            {user && <button className={styles.signout} onClick={onLogout}>Sign out</button>}
+          </div>
+        </header>
 
-  return <div style={styles.bg}><style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes revealTicket{0%{opacity:0;transform:translateY(18px) scale(.96)}100%{opacity:1;transform:translateY(0) scale(1)}} .choice{transition:transform .15s ease}.choice:hover{transform:translateY(-2px)} .cta{transition:transform .15s ease,filter .15s ease}.cta:hover{transform:translateY(-2px);filter:brightness(1.04)}`}</style><div style={{ maxWidth: 420, margin: "0 auto", padding: "48px 24px" }}>
-    <div style={{ textAlign: "center", marginBottom: 20 }}><div style={{ display: "inline-flex", background: "#1A1A1A", color: "#F5F6F3", fontSize: ".7rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", padding: "5px 14px", borderRadius: 999, marginBottom: 12 }}>✨ Welcome back, {profile.name}</div><h1 style={{ fontSize: "2.1rem", fontWeight: 800, margin: 0 }}>Offbeat</h1><p style={{ margin: "4px 0 0", fontSize: ".78rem", fontWeight: 600, opacity: 0.55 }}>By Priyanshi Srivastava</p><button onClick={logout} style={{ background: "none", border: "none", textDecoration: "underline", opacity: 0.5, fontSize: ".8rem", marginTop: 6, cursor: "pointer" }}>Sign out</button></div>
-    <div style={{ display: "flex", gap: 8, marginBottom: 20, background: "#1A1A1A0F", padding: 4, borderRadius: 999 }}><button onClick={() => setTab("new")} style={{ flex: 1, padding: 10, borderRadius: 999, fontWeight: 700, border: "none", background: tab === "new" ? "#fff" : "transparent" }}>New Adventure</button><button onClick={() => setTab("completed")} style={{ flex: 1, padding: 10, borderRadius: 999, fontWeight: 700, border: "none", background: tab === "completed" ? "#fff" : "transparent" }}>Completed</button></div>
-    {tab === "completed" ? <CompletedTab user={user} refreshKey={completedRefresh} /> : <>
-      {!adventure && !loading && <div style={{ ...styles.card, padding: 26 }}><label style={{ fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", opacity: 0.6, display: "block", marginBottom: 8 }}>Where are you?</label><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mumbai" style={{ ...styles.input, marginBottom: 18 }} /><p style={{ fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", opacity: 0.6, marginBottom: 8 }}>How much time?</p><div style={{ display: "flex", gap: 8, marginBottom: 18 }}>{DURATIONS.map((d) => <button key={d} onClick={() => setDuration(d)} className="choice" style={{ flex: 1, padding: 10, borderRadius: 12, fontWeight: 700, border: duration === d ? "2px solid #1A1A1A" : "2px solid #1A1A1A18", background: duration === d ? "#1A1A1A" : "#F9FAF8", color: duration === d ? "#fff" : "#1A1A1A" }}>{d}</button>)}</div><p style={{ fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", opacity: 0.6, marginBottom: 8 }}>What's the vibe?</p><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>{VIBES.map((v) => <button key={v.label} onClick={() => setVibe(v.label)} className="choice" style={{ padding: 10, borderRadius: 12, fontWeight: 700, border: vibe === v.label ? "2px solid #2B6E6B" : "2px solid #1A1A1A18", background: vibe === v.label ? "#2B6E6B" : "#F9FAF8", color: vibe === v.label ? "#fff" : "#1A1A1A" }}>{v.icon} {v.label}</button>)}</div><p style={{ fontSize: ".7rem", fontWeight: 700, textTransform: "uppercase", opacity: 0.6, marginBottom: 8 }}>Who's it for?</p><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>{COMPANIONS.map((c) => <button key={c.label} onClick={() => setCompanion(c.label)} className="choice" style={{ padding: 10, borderRadius: 12, fontWeight: 700, border: companion === c.label ? "2px solid #E8A33D" : "2px solid #1A1A1A18", background: companion === c.label ? "#E8A33D" : "#F9FAF8", color: "#1A1A1A" }}>{c.icon} {c.label}</button>)}</div><button onClick={generate} className="cta" style={{ width: "100%", padding: 14, borderRadius: 12, fontWeight: 800, fontSize: "1rem", background: "linear-gradient(135deg,#E8A33D,#D98A2A)", border: "none" }}>✨ Surprise me</button></div>}
-      {loading && <div style={{ textAlign: "center", marginTop: 48 }}><div style={{ width: 44, height: 44, margin: "0 auto 16px", borderRadius: "50%", border: "3px solid #1A1A1A22", borderTopColor: "#E8A33D", animation: "spin .8s linear infinite" }} /><p style={{ opacity: 0.7, fontWeight: 600 }}>Scouting your adventure...</p></div>}
-      {errorMsg && <div style={{ textAlign: "center", marginTop: 24 }}><p style={{ color: "#B4483A", fontWeight: 600 }}>{errorMsg}</p><button onClick={reset} style={{ marginTop: 8, textDecoration: "underline", background: "none", border: "none" }}>Try again</button></div>}
-      {adventure && <div style={{ animation: "revealTicket .6s cubic-bezier(.16,1,.3,1)" }}><div style={{ background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 20px 40px -12px rgba(26,26,26,.35),0 0 0 2px #1A1A1A" }}><div style={{ padding: 22, background: "linear-gradient(135deg,#E8A33D,#F0B94D 45%,#D98A2A)" }}><p style={{ fontSize: ".68rem", letterSpacing: ".18em", textTransform: "uppercase", opacity: 0.65, margin: 0, fontWeight: 700 }}>Boarding pass · #{code}</p><h2 style={{ fontSize: "1.5rem", margin: "8px 0 0", fontWeight: 800 }}>{adventure.title}</h2></div><div style={{ padding: "18px 22px 0" }}><p style={{ fontStyle: "italic", opacity: 0.75 }}>{adventure.tagline}</p><span style={{ background: "#2B6E6B14", color: "#2B6E6B", fontSize: ".75rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999 }}>⏱ {adventure.duration}</span></div><div style={{ borderTop: "2.5px dashed #1A1A1A33", margin: "20px 0" }} /><div style={{ padding: "0 22px 22px" }}>{adventure.stops.map((s, i) => <div key={i} style={{ display: "flex", gap: 12, marginBottom: 14 }}><div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", background: "#1A1A1A", color: "#fff", fontSize: ".75rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</div><div><p style={{ margin: 0, fontWeight: 700 }}>{s.name}</p><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.name}, ${city}`)}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 4, color: "#2B6E6B", fontSize: ".78rem", fontWeight: 700, textDecoration: "none" }}>📍 Open in Maps ↗</a><p style={{ margin: "2px 0 0", opacity: 0.7, fontSize: ".85rem" }}>{s.description}</p></div></div>)}<p style={{ marginTop: 16, color: "#2B6E6B", fontWeight: 700, borderLeft: "3px solid #2B6E6B", paddingLeft: 10 }}>{adventure.vibe_line}</p></div></div><button onClick={markCompleted} disabled={justCompleted} className="cta" style={{ marginTop: 16, width: "100%", padding: 14, borderRadius: 999, fontWeight: 700, background: justCompleted ? "#2B6E6B22" : "#2B6E6B", color: justCompleted ? "#2B6E6B" : "#fff", border: "none" }}>{justCompleted ? "✓ Marked as completed" : "I went! Mark as completed"}</button><button onClick={reset} className="cta" style={{ marginTop: 10, width: "100%", padding: 14, borderRadius: 999, fontWeight: 700, background: "#1A1A1A", color: "#fff", border: "none" }}>Get another adventure</button></div>}
-    </>}
-  </div></div>;
+        {user && (
+          <div className={styles.tabs}>
+            <button className={`${styles.tab} ${tab === "new" ? styles.tabActive : ""}`} onClick={() => setTab("new")}>New Adventure</button>
+            <button className={`${styles.tab} ${tab === "completed" ? styles.tabActive : ""}`} onClick={() => setTab("completed")}>Completed</button>
+          </div>
+        )}
+
+        {tab === "completed" && user ? (
+          <CompletedTab user={user} refreshKey={completedRefresh} />
+        ) : (
+          <>
+            <section className={styles.panel}>
+              <span className={styles.eyebrow} style={{ background: "#17191d", color: "#fff" }}>✦ Build a little adventure</span>
+              <h1 className={styles.ticketTitle}>Where are you going?</h1>
+              <p className={styles.ticketSub}>Give Offbeat a city, a mood and a little time. We will handle the rest.</p>
+
+              <div className={styles.section}>
+                <label className={styles.label} htmlFor="city">City</label>
+                <input id="city" className={styles.input} value={city} onChange={(event) => setCity(event.target.value)} placeholder="Mumbai, Delhi, Jaipur..." onKeyDown={(event) => event.key === "Enter" && generate()} />
+              </div>
+
+              <div className={styles.section}>
+                <span className={styles.label}>Time</span>
+                <div className={styles.choiceGrid}>
+                  {DURATIONS.map((value) => <button key={value} className={`${styles.choice} ${duration === value ? styles.choiceActive : ""}`} onClick={() => setDuration(value)}>⏱️ {value}</button>)}
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <span className={styles.label}>Vibe</span>
+                <div className={styles.choiceGrid}>
+                  {VIBES.map((value) => <button key={value.label} className={`${styles.choice} ${vibe === value.label ? styles.choiceActive : ""}`} onClick={() => setVibe(value.label)}>{value.icon} {value.label}</button>)}
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <span className={styles.label}>Who is coming?</span>
+                <div className={styles.choiceGrid}>
+                  {COMPANIONS.map((value) => <button key={value.label} className={`${styles.choice} ${companion === value.label ? styles.choiceActive : ""}`} onClick={() => setCompanion(value.label)}>{value.icon} {value.label}</button>)}
+                </div>
+              </div>
+
+              <button className={styles.generate} onClick={generate} disabled={loading || !city.trim()}>{loading ? "Finding your route..." : "Create my Offbeat"}</button>
+              <p className={styles.guestNote}>{user ? "Your preferences can be remembered for next time." : "Guest mode is private and unsaved. Sign in only when you want to keep an adventure."}</p>
+              {errorMsg && <p className={styles.error}>{errorMsg}</p>}
+            </section>
+
+            {adventure && (
+              <article className={styles.ticket}>
+                <div className={styles.ticketTop}>
+                  <div className={styles.ticketCode}>BOARDING PASS · #{code}</div>
+                  <h2 className={styles.ticketTitle}>{adventure.title}</h2>
+                  <p className={styles.ticketSub}>{adventure.description}</p>
+                </div>
+                <div className={styles.stops}>
+                  {(adventure.stops || []).map((stop, index) => (
+                    <div className={styles.stop} key={`${stop.name}-${index}`}>
+                      <span className={styles.stopNum}>{index + 1}</span><strong>{stop.name}</strong>
+                      <div><a className={styles.map} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stop.name}, ${city}`)}`} target="_blank" rel="noopener noreferrer">📍 Open in Maps ↗</a></div>
+                      {stop.reason && <p style={{ margin: "8px 0 0", color: "#707570", fontSize: ".82rem", lineHeight: 1.45 }}>{stop.reason}</p>}
+                    </div>
+                  ))}
+                  {user ? (
+                    <button className={styles.complete} onClick={markCompleted} disabled={justCompleted}>{justCompleted ? "✓ Saved to Completed" : "Mark adventure completed"}</button>
+                  ) : (
+                    <div className={styles.guestSave}>Want to keep this adventure? Sign in with Google and generate it again to save it to your profile.</div>
+                  )}
+                </div>
+              </article>
+            )}
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  const [user, setUser] = useState(undefined);
+  const [guest, setGuest] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    let active = true;
+    setProfileLoading(true);
+    apiFetch("/api/profile", user)
+      .then((data) => {
+        if (!active) return;
+        const fallback = { name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" };
+        setProfile({ ...fallback, ...(data.profile || {}) });
+      })
+      .catch(() => active && setProfile({ name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" }))
+      .finally(() => active && setProfileLoading(false));
+    return () => { active = false; };
+  }, [user]);
+
+  const logout = async () => {
+    await signOut(auth);
+    setProfile(null);
+    setGuest(false);
+  };
+
+  if (user === undefined) return <main className={styles.authCard}><div className={styles.authInner}><Logo /><p className={styles.hello}>Loading Offbeat...</p></div></main>;
+  if (!user && !guest) return <Landing onGuest={() => setGuest(true)} />;
+  if (user && profileLoading) return <main className={styles.authCard}><div className={styles.authInner}><Logo /><p className={styles.hello}>Getting your Offbeat ready...</p></div></main>;
+  if (user && !profile?.name) return <AuthGate user={user} onDone={setProfile} />;
+  return <Generator user={user || null} profile={profile} onLogout={logout} />;
 }
