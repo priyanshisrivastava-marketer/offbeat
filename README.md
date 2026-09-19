@@ -58,3 +58,5 @@ The API routes are explicitly dynamic and run on Node.js so Firebase Admin crede
 5. Generate an adventure and confirm real places are returned.
 6. Mark an adventure as completed and confirm it appears in the Completed tab.
 7. Sign out and sign back in to confirm the profile and saved adventures persist.
+
+<!-- Deployment trigger: Firebase Google sign-in UI is implemented in app/page.js. -->
