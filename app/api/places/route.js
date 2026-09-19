@@ -1,5 +1,8 @@
 import { getAuthenticatedUser } from "../../../lib/verifyFirebaseToken";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const VIBE_KEYWORDS = {
   Chill: "cozy cafe park quiet spot",
   Social: "popular bar rooftop lively spot",
@@ -15,13 +18,10 @@ export async function POST(req) {
     const { city, vibe } = await req.json();
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-    if (!apiKey) {
-      return Response.json({ error: "Missing GOOGLE_PLACES_API_KEY on the server" }, { status: 500 });
-    }
+    if (!apiKey) return Response.json({ error: "Missing GOOGLE_PLACES_API_KEY on the server" }, { status: 500 });
     if (!city) return Response.json({ error: "City is required" }, { status: 400 });
 
     const query = `${VIBE_KEYWORDS[vibe] || "interesting things to do"} in ${city}`;
-
     const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
       headers: {
@@ -33,9 +33,7 @@ export async function POST(req) {
     });
 
     const data = await res.json();
-    if (data.error) {
-      return Response.json({ error: `Google Places error: ${data.error.message}` }, { status: 502 });
-    }
+    if (data.error) return Response.json({ error: `Google Places error: ${data.error.message}` }, { status: 502 });
 
     const places = (data.places || []).map((p) => ({
       name: p.displayName?.text || "Unknown",
