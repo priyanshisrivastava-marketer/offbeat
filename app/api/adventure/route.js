@@ -1,7 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "../../../lib/verifyFirebaseToken";
+
 const SYSTEM_PROMPT = `You are the adventure engine for "Offbeat," an app that generates spontaneous local micro-adventures.
 
-You will be given a city, a time budget, a vibe, who it's for (Solo, Friends group, Partner, or Family), and a list of real nearby places. Build a specific 2-4 hour micro-adventure using ONLY places from the provided list — do not invent place names. If the list is short, use fewer stops rather than inventing.
+You will be given a city, a time budget, a vibe, who it's for (Solo, Friends group, Partner, or Family), and a list of real nearby places. Build a specific 2-4 hour micro-adventure using ONLY places from the provided list. Do not invent place names. If the list is short, use fewer stops rather than inventing.
 
 Tailor tone to who it's for: Solo trips more introspective/exploratory; Friends group trips social/shareable; Partner trips a little romance or novelty; Family trips safe and multi-age-friendly.
 
@@ -16,96 +17,32 @@ Output ONLY valid JSON, no markdown fences, no prose, in this exact shape:
 
 export async function POST(req) {
   try {
-    const authHeader = req.headers.get("authorization");
-
-if (!authHeader?.startsWith("Bearer ")) {
-  return Response.json(
-    { error: "Unauthorized" },
-    { status: 401 }
-  );
-}
-
-const token = authHeader.slice(7);
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-const {
-  data: { user },
-  error: authError,
-} = await supabase.auth.getUser(token);
-
-if (authError || !user) {
-  return Response.json(
-    { error: "Unauthorized" },
-    { status: 401 }
-  );
-}
+    const user = await getAuthenticatedUser(req);
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
     const { city, duration, vibe, companion, places } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return Response.json({ error: "Missing GEMINI_API_KEY on the server" }, { status: 500 });
-    }
-
+    if (!apiKey) return Response.json({ error: "Missing GEMINI_API_KEY on the server" }, { status: 500 });
     const placesList = (places || []).map((p) => `${p.name} (${p.address})`).join("\n");
-    const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.
-
-Real nearby places to choose from:
-${placesList || "No places found — invent a plausible generic itinerary instead."}`;
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            temperature: 0.9,
-            maxOutputTokens: 2048,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
-      }
-    );
-
+    const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.\n\nReal nearby places to choose from:\n${placesList || "No places found."}`;
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.9, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } },
+      }),
+    });
     const data = await res.json();
-    if (data.error) {
-      return Response.json({ error: data.error.message || "Gemini API error" }, { status: 502 });
-    }
-
+    if (data.error) return Response.json({ error: data.error.message || "Gemini API error" }, { status: 502 });
     const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n") || "";
-    if (!text) {
-      return Response.json({ error: "Empty response from Gemini" }, { status: 502 });
-    }
-
-    // Strip markdown fences, then isolate just the {...} block in case the
-    // model adds any stray text before/after, and remove trailing commas
-    // that some model outputs include before a closing bracket/brace.
+    if (!text) return Response.json({ error: "Empty response from Gemini" }, { status: 502 });
     let clean = text.replace(/```json|```/g, "").trim();
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      clean = clean.slice(firstBrace, lastBrace + 1);
-    }
+    if (firstBrace !== -1 && lastBrace !== -1) clean = clean.slice(firstBrace, lastBrace + 1);
     clean = clean.replace(/,(\s*[}\]])/g, "$1");
-
-    let adventure;
-    try {
-      adventure = JSON.parse(clean);
-    } catch (parseErr) {
-      return Response.json(
-        { error: `Could not parse the adventure. Please try again. (${parseErr.message})` },
-        { status: 502 }
-      );
-    }
-
-    return Response.json({ adventure });
-  } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
-  }
+    try { return Response.json({ adventure: JSON.parse(clean) }); }
+    catch (parseErr) { return Response.json({ error: `Could not parse the adventure. Please try again. (${parseErr.message})` }, { status: 502 }); }
+  } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
 }
