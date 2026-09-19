@@ -25,14 +25,14 @@ const HEROES = [
   {
     type: "video",
     src: "/landing/hero-1.mp4",
-    kicker: "Tiny adventures",
+    kicker: "Start wandering",
     title: "Find your next adventure.",
     text: "A little time. A little curiosity. One offbeat place.",
   },
   {
     type: "image",
     src: "/landing/mcleod-gang.jpg",
-    kicker: "Go somewhere different",
+    kicker: "Go somewhere unexpected",
     title: "Go somewhere unexpected.",
     text: "Discover places worth stepping away for.",
   },
@@ -46,7 +46,7 @@ const HEROES = [
   {
     type: "image",
     src: "/landing/himalayan-art.jpg",
-    kicker: "Make time for it",
+    kicker: "Make time",
     title: "Make a few hours count.",
     text: "Turn spare time into a tiny adventure.",
   },
@@ -60,30 +60,30 @@ const HEROES = [
   {
     type: "image",
     src: "/landing/temple.jpg",
-    kicker: "Step away",
+    kicker: "Slow down",
     title: "Step off the usual path.",
     text: "There's always somewhere new to explore.",
   },
   {
     type: "image",
     src: "/landing/beach-wide.jpg",
-    kicker: "Closer than you think",
+    kicker: "Get out",
     title: "Your adventure is closer than you think.",
     text: "Explore without needing a whole day.",
   },
   {
     type: "image",
     src: "/landing/beach-shell.jpg",
-    kicker: "Slow down",
+    kicker: "Small moments",
     title: "Slow down. Look around.",
     text: "Find something different.",
   },
   {
     type: "image",
     src: "/landing/himalayan-view.jpg",
-    kicker: "Find your offbeat",
-    title: "Go offbeat.",
-    text: "Discover more. Wander differently.",
+    kicker: "Go offbeat",
+    title: "Leave the ordinary behind.",
+    text: "Explore nearby places you might never have thought to visit.",
   },
 ];
 
@@ -178,29 +178,89 @@ function GoogleButton({ onError, compact = false }) {
       onClick={login}
       disabled={loading}
       type="button"
-      aria-label="Continue with Google"
     >
       <GoogleIcon />
-      <span>
-        {loading ? "Opening Google..." : "Continue with Google"}
-      </span>
+      <span>{loading ? "Opening Google…" : "Continue with Google"}</span>
     </button>
+  );
+}
+
+function HeroMedia({ hero, className, onError }) {
+  if (hero.type === "video") {
+    return (
+      <video
+        className={className}
+        src={hero.src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+        onError={onError}
+      />
+    );
+  }
+
+  return (
+    <img
+      className={className}
+      src={hero.src}
+      alt=""
+      draggable="false"
+      onError={onError}
+    />
   );
 }
 
 function Landing({ onGuest }) {
   const [slide, setSlide] = useState(0);
+  const [previousSlide, setPreviousSlide] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setSlide((current) => (current + 1) % HEROES.length);
+      setSlide((current) => {
+        const next = (current + 1) % HEROES.length;
+
+        setPreviousSlide(current);
+        setIsTransitioning(true);
+
+        window.setTimeout(() => {
+          setPreviousSlide(null);
+          setIsTransitioning(false);
+        }, 900);
+
+        return next;
+      });
     }, 4500);
 
     return () => window.clearInterval(timer);
   }, []);
 
+  const changeSlide = (nextSlide) => {
+    if (nextSlide === slide || isTransitioning) {
+      return;
+    }
+
+    setPreviousSlide(slide);
+    setSlide(nextSlide);
+    setIsTransitioning(true);
+
+    window.setTimeout(() => {
+      setPreviousSlide(null);
+      setIsTransitioning(false);
+    }, 900);
+  };
+
   const hero = HEROES[slide];
+  const previousHero =
+    previousSlide !== null ? HEROES[previousSlide] : null;
+
+  const handleMediaError = (event) => {
+    event.currentTarget.style.opacity = "0";
+  };
 
   return (
     <main className={styles.landing}>
@@ -214,32 +274,21 @@ function Landing({ onGuest }) {
           className={styles.hero}
           aria-label="Offbeat travel inspiration"
         >
-          {hero.type === "video" ? (
-            <video
-              key={hero.src}
-              className={styles.heroImage}
-              src={hero.src}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              aria-hidden="true"
-              onError={(event) => {
-                event.currentTarget.style.opacity = "0";
-              }}
+          <div className={styles.heroMedia}>
+            {previousHero && (
+              <HeroMedia
+                hero={previousHero}
+                className={`${styles.heroImage} ${styles.heroImagePrevious}`}
+                onError={handleMediaError}
+              />
+            )}
+
+            <HeroMedia
+              hero={hero}
+              className={`${styles.heroImage} ${styles.heroImageCurrent}`}
+              onError={handleMediaError}
             />
-          ) : (
-            <img
-              key={hero.src}
-              className={styles.heroImage}
-              src={hero.src}
-              alt=""
-              onError={(event) => {
-                event.currentTarget.style.opacity = "0";
-              }}
-            />
-          )}
+          </div>
 
           <div className={styles.heroShade} />
 
@@ -260,9 +309,10 @@ function Landing({ onGuest }) {
                   className={`${styles.dot} ${
                     index === slide ? styles.dotActive : ""
                   }`}
-                  onClick={() => setSlide(index)}
+                  onClick={() => changeSlide(index)}
                   aria-label={`Show slide ${index + 1}`}
                   aria-current={index === slide ? "true" : undefined}
+                  disabled={isTransitioning}
                 />
               ))}
             </div>
@@ -290,7 +340,9 @@ function Landing({ onGuest }) {
           </button>
         </div>
 
-        {authError && <p className={styles.error}>{authError}</p>}
+        {authError && (
+          <p className={styles.error}>{authError}</p>
+        )}
 
         <p className={styles.trust}>
           🔒 Your sign-in is only used to save your profile and adventures.
@@ -309,7 +361,9 @@ function AuthGate({ user, onDone }) {
   const save = async () => {
     const cleanName = name.trim();
 
-    if (!cleanName) return;
+    if (!cleanName) {
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -317,7 +371,9 @@ function AuthGate({ user, onDone }) {
     try {
       const data = await apiFetch("/api/profile", user, {
         method: "POST",
-        body: JSON.stringify({ name: cleanName }),
+        body: JSON.stringify({
+          name: cleanName,
+        }),
       });
 
       onDone(
@@ -341,7 +397,9 @@ function AuthGate({ user, onDone }) {
       <div className={styles.authInner}>
         <Logo />
 
-        <p className={styles.hello}>One tiny detail before you go.</p>
+        <p className={styles.hello}>
+          One tiny detail before you go.
+        </p>
 
         <div className={styles.panel}>
           <label className={styles.label} htmlFor="name">
@@ -353,7 +411,9 @@ function AuthGate({ user, onDone }) {
             className={`${styles.input} ${styles.profileInput}`}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && save()}
+            onKeyDown={(event) =>
+              event.key === "Enter" && save()
+            }
             placeholder="e.g. Priya"
             autoFocus
           />
@@ -387,7 +447,9 @@ function CompletedTab({ user, refreshKey }) {
 
     apiFetch("/api/completed", user)
       .then((data) => {
-        if (active) setItems(data.items || []);
+        if (active) {
+          setItems(data.items || []);
+        }
       })
       .catch((err) => {
         if (active) {
@@ -397,7 +459,9 @@ function CompletedTab({ user, refreshKey }) {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       });
 
     return () => {
@@ -406,7 +470,11 @@ function CompletedTab({ user, refreshKey }) {
   }, [user, refreshKey]);
 
   if (loading) {
-    return <div className={styles.empty}>Loading your adventures...</div>;
+    return (
+      <div className={styles.empty}>
+        Loading your adventures...
+      </div>
+    );
   }
 
   if (error) {
@@ -426,13 +494,18 @@ function CompletedTab({ user, refreshKey }) {
   return (
     <div>
       {items.map((adventure) => (
-        <article className={styles.ticket} key={adventure.id}>
+        <article
+          className={styles.ticket}
+          key={adventure.id}
+        >
           <div className={styles.ticketTop}>
             <div className={styles.ticketCode}>
               COMPLETED · {adventure.city}
             </div>
 
-            <h2 className={styles.ticketTitle}>{adventure.title}</h2>
+            <h2 className={styles.ticketTitle}>
+              {adventure.title}
+            </h2>
           </div>
 
           <div className={styles.stops}>
@@ -441,7 +514,9 @@ function CompletedTab({ user, refreshKey }) {
                 className={styles.stop}
                 key={`${stop.name}-${index}`}
               >
-                <span className={styles.stopNum}>{index + 1}</span>
+                <span className={styles.stopNum}>
+                  {index + 1}
+                </span>
 
                 <strong>{stop.name}</strong>
 
@@ -484,7 +559,9 @@ function Generator({ user, profile, onLogout }) {
   const code = useMemo(ticketCode, []);
 
   const generate = async () => {
-    if (!city.trim()) return;
+    if (!city.trim()) {
+      return;
+    }
 
     setLoading(true);
     setErrorMsg("");
@@ -494,7 +571,10 @@ function Generator({ user, profile, onLogout }) {
     try {
       const placesData = await apiFetch("/api/places", user, {
         method: "POST",
-        body: JSON.stringify({ city, vibe }),
+        body: JSON.stringify({
+          city,
+          vibe,
+        }),
       });
 
       const advData = await apiFetch("/api/adventure", user, {
@@ -535,7 +615,9 @@ function Generator({ user, profile, onLogout }) {
   };
 
   const markCompleted = async () => {
-    if (!user || !adventure || justCompleted) return;
+    if (!user || !adventure || justCompleted) {
+      return;
+    }
 
     setErrorMsg("");
 
@@ -555,7 +637,8 @@ function Generator({ user, profile, onLogout }) {
       setCompletedRefresh((value) => value + 1);
     } catch (err) {
       setErrorMsg(
-        err?.message || "Could not save this adventure right now. Please try again."
+        err?.message ||
+          "Could not save this adventure right now. Please try again."
       );
     }
   };
@@ -569,7 +652,11 @@ function Generator({ user, profile, onLogout }) {
           <div>
             <div className={styles.hello}>
               {user
-                ? `Hi, ${profile?.name || user.displayName || "there"}`
+                ? `Hi, ${
+                    profile?.name ||
+                    user.displayName ||
+                    "there"
+                  }`
                 : "Guest mode"}
             </div>
 
@@ -599,7 +686,9 @@ function Generator({ user, profile, onLogout }) {
 
             <button
               className={`${styles.tab} ${
-                tab === "completed" ? styles.tabActive : ""
+                tab === "completed"
+                  ? styles.tabActive
+                  : ""
               }`}
               onClick={() => setTab("completed")}
               type="button"
@@ -632,12 +721,15 @@ function Generator({ user, profile, onLogout }) {
               </h1>
 
               <p className={styles.ticketSub}>
-                Give Offbeat a city, a mood and a little time. We will
-                handle the rest.
+                Give Offbeat a city, a mood and a little
+                time. We will handle the rest.
               </p>
 
               <div className={styles.section}>
-                <label className={styles.label} htmlFor="city">
+                <label
+                  className={styles.label}
+                  htmlFor="city"
+                >
                   City
                 </label>
 
@@ -645,7 +737,9 @@ function Generator({ user, profile, onLogout }) {
                   id="city"
                   className={styles.input}
                   value={city}
-                  onChange={(event) => setCity(event.target.value)}
+                  onChange={(event) =>
+                    setCity(event.target.value)
+                  }
                   placeholder="Mumbai, Delhi, Jaipur..."
                   onKeyDown={(event) =>
                     event.key === "Enter" && generate()
@@ -654,7 +748,9 @@ function Generator({ user, profile, onLogout }) {
               </div>
 
               <div className={styles.section}>
-                <span className={styles.label}>Time</span>
+                <span className={styles.label}>
+                  Time
+                </span>
 
                 <div className={styles.choiceGrid}>
                   {DURATIONS.map((value) => (
@@ -675,7 +771,9 @@ function Generator({ user, profile, onLogout }) {
               </div>
 
               <div className={styles.section}>
-                <span className={styles.label}>Vibe</span>
+                <span className={styles.label}>
+                  Vibe
+                </span>
 
                 <div className={styles.choiceGrid}>
                   {VIBES.map((value) => (
@@ -686,7 +784,9 @@ function Generator({ user, profile, onLogout }) {
                           ? styles.choiceActive
                           : ""
                       }`}
-                      onClick={() => setVibe(value.label)}
+                      onClick={() =>
+                        setVibe(value.label)
+                      }
                       type="button"
                     >
                       {value.icon} {value.label}
@@ -709,7 +809,9 @@ function Generator({ user, profile, onLogout }) {
                           ? styles.choiceActive
                           : ""
                       }`}
-                      onClick={() => setCompanion(value.label)}
+                      onClick={() =>
+                        setCompanion(value.label)
+                      }
                       type="button"
                     >
                       {value.icon} {value.label}
@@ -721,7 +823,9 @@ function Generator({ user, profile, onLogout }) {
               <button
                 className={styles.generate}
                 onClick={generate}
-                disabled={loading || !city.trim()}
+                disabled={
+                  loading || !city.trim()
+                }
                 type="button"
               >
                 {loading
@@ -736,7 +840,9 @@ function Generator({ user, profile, onLogout }) {
               </p>
 
               {errorMsg && (
-                <p className={styles.error}>{errorMsg}</p>
+                <p className={styles.error}>
+                  {errorMsg}
+                </p>
               )}
             </section>
 
@@ -757,44 +863,48 @@ function Generator({ user, profile, onLogout }) {
                 </div>
 
                 <div className={styles.stops}>
-                  {(adventure.stops || []).map((stop, index) => (
-                    <div
-                      className={styles.stop}
-                      key={`${stop.name}-${index}`}
-                    >
-                      <span className={styles.stopNum}>
-                        {index + 1}
-                      </span>
-
-                      <strong>{stop.name}</strong>
-
-                      <div>
-                        <a
-                          className={styles.map}
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            `${stop.name}, ${city}`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                  {(adventure.stops || []).map(
+                    (stop, index) => (
+                      <div
+                        className={styles.stop}
+                        key={`${stop.name}-${index}`}
+                      >
+                        <span
+                          className={styles.stopNum}
                         >
-                          📍 Open in Maps ↗
-                        </a>
+                          {index + 1}
+                        </span>
+
+                        <strong>{stop.name}</strong>
+
+                        <div>
+                          <a
+                            className={styles.map}
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              `${stop.name}, ${city}`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            📍 Open in Maps ↗
+                          </a>
+                        </div>
+
+                        {stop.description && (
+                          <p
+                            style={{
+                              margin: "8px 0 0",
+                              color: "#707570",
+                              fontSize: ".82rem",
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            {stop.description}
+                          </p>
+                        )}
                       </div>
-
-                      {stop.description && (
-                        <p
-                          style={{
-                            margin: "8px 0 0",
-                            color: "#707570",
-                            fontSize: ".82rem",
-                            lineHeight: 1.45,
-                          }}
-                        >
-                          {stop.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  )}
 
                   {user ? (
                     <button
@@ -809,8 +919,9 @@ function Generator({ user, profile, onLogout }) {
                     </button>
                   ) : (
                     <div className={styles.guestSave}>
-                      Want to keep this adventure? Sign in with Google
-                      and generate it again to save it to your profile.
+                      Want to keep this adventure? Sign
+                      in with Google and generate it again
+                      to save it to your profile.
                     </div>
                   )}
                 </div>
@@ -827,7 +938,8 @@ export default function Home() {
   const [user, setUser] = useState(undefined);
   const [guest, setGuest] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoading, setProfileLoading] =
+    useState(true);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
@@ -846,7 +958,9 @@ export default function Home() {
 
     apiFetch("/api/profile", user)
       .then((data) => {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         const fallback = {
           name: user.displayName || "",
@@ -869,7 +983,9 @@ export default function Home() {
         }
       })
       .finally(() => {
-        if (active) setProfileLoading(false);
+        if (active) {
+          setProfileLoading(false);
+        }
       });
 
     return () => {
@@ -888,14 +1004,20 @@ export default function Home() {
       <main className={styles.authCard}>
         <div className={styles.authInner}>
           <Logo />
-          <p className={styles.hello}>Loading Offbeat...</p>
+          <p className={styles.hello}>
+            Loading Offbeat...
+          </p>
         </div>
       </main>
     );
   }
 
   if (!user && !guest) {
-    return <Landing onGuest={() => setGuest(true)} />;
+    return (
+      <Landing
+        onGuest={() => setGuest(true)}
+      />
+    );
   }
 
   if (user && profileLoading) {
@@ -912,7 +1034,12 @@ export default function Home() {
   }
 
   if (user && !profile?.name) {
-    return <AuthGate user={user} onDone={setProfile} />;
+    return (
+      <AuthGate
+        user={user}
+        onDone={setProfile}
+      />
+    );
   }
 
   return (
