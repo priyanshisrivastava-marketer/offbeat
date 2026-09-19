@@ -1,5 +1,3 @@
-import { getAuthenticatedUser } from "../../../lib/verifyFirebaseToken";
-
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -20,14 +18,11 @@ Output ONLY valid JSON, no markdown fences, no prose, in this exact shape:
 
 export async function POST(req) {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
     const { city, duration, vibe, companion, places } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return Response.json({ error: "Missing GEMINI_API_KEY on the server" }, { status: 500 });
 
-    const placesList = (places || []).map((p) => `${p.name} (${p.address})`).join("\n");
+    const placesList = (places || []).map((place) => `${place.name} (${place.address})`).join("\n");
     const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.\n\nReal nearby places to choose from:\n${placesList || "No places found."}`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -43,7 +38,7 @@ export async function POST(req) {
     const data = await res.json();
     if (data.error) return Response.json({ error: data.error.message || "Gemini API error" }, { status: 502 });
 
-    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n") || "";
+    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text).join("\n") || "";
     if (!text) return Response.json({ error: "Empty response from Gemini" }, { status: 502 });
 
     let clean = text.replace(/```json|```/g, "").trim();
@@ -54,10 +49,10 @@ export async function POST(req) {
 
     try {
       return Response.json({ adventure: JSON.parse(clean) });
-    } catch (parseErr) {
-      return Response.json({ error: `Could not parse the adventure. Please try again. (${parseErr.message})` }, { status: 502 });
+    } catch (parseError) {
+      return Response.json({ error: `Could not parse the adventure. Please try again. (${parseError.message})` }, { status: 502 });
     }
-  } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }
