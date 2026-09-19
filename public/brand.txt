@@ -1,0 +1,1 @@
+Offbeat brand assets are stored in the `public/brand` directory. The landing logo should be named `offbeat-mark.png`.
