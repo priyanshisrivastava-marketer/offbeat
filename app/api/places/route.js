@@ -1,5 +1,3 @@
-import { getAuthenticatedUser } from "../../../lib/verifyFirebaseToken";
-
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -12,9 +10,6 @@ const VIBE_KEYWORDS = {
 
 export async function POST(req) {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
     const { city, vibe } = await req.json();
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
@@ -35,14 +30,14 @@ export async function POST(req) {
     const data = await res.json();
     if (data.error) return Response.json({ error: `Google Places error: ${data.error.message}` }, { status: 502 });
 
-    const places = (data.places || []).map((p) => ({
-      name: p.displayName?.text || "Unknown",
-      address: p.formattedAddress || "",
-      rating: p.rating || null,
+    const places = (data.places || []).map((place) => ({
+      name: place.displayName?.text || "Unknown",
+      address: place.formattedAddress || "",
+      rating: place.rating || null,
     }));
 
     return Response.json({ places });
-  } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }
