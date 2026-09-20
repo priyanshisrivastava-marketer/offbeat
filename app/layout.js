@@ -1,5 +1,6 @@
 import "./offbeat-overrides.css";
 import RegisterSW from "./register-sw";
+import LocationBridge from "./location-bridge";
 
 export const metadata = {
   title: "Offbeat — A ticket out the door",
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body style={{ margin: 0 }}>
         {children}
+        <LocationBridge />
         <RegisterSW />
       </body>
     </html>
