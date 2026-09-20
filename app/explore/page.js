@@ -130,7 +130,16 @@ export default function ExplorePage() {
           <img className={styles.miniBrand} src="/brand/offbeat-mark.png" alt="Offbeat" />
           <div>
             <div className={styles.hello}>{user ? `Hi, ${name || user.displayName || "there"}` : "Guest mode"}</div>
-            {user && <button className={styles.signout} onClick={() => signOut(auth)} type="button">Sign out</button>}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "14px", flexWrap: "wrap", marginTop: "4px" }}>
+              <a
+                href="/community"
+                style={{ color: "#17191d", fontWeight: 800, textDecoration: "none", fontSize: ".82rem", padding: "5px 0" }}
+                aria-label="Open Offbeat Community"
+              >
+                ✦ Community
+              </a>
+              {user && <button className={styles.signout} onClick={() => signOut(auth)} type="button">Sign out</button>}
+            </div>
           </div>
         </header>
 
