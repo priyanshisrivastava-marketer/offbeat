@@ -42,6 +42,11 @@ function ticketCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+function encodeAdventure(adventure, meta) {
+  const payload = { ...adventure, ...meta, stops: adventure?.stops || [] };
+  return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+}
+
 async function apiFetch(path, user, options = {}) {
   const controller = new AbortController();
   const timeoutMs = options.timeout || 30000;
@@ -50,10 +55,6 @@ async function apiFetch(path, user, options = {}) {
   const headers = { "Content-Type": "application/json", ...(fetchOptions.headers || {}) };
 
   try {
-    // Getting an ID token must never trap the UI. Firebase can occasionally
-    // take longer than expected on mobile after a Google redirect. If token
-    // retrieval fails, make the request without it. Public endpoints still
-    // work, while protected endpoints can return a normal 401.
     if (user) {
       try {
         const token = await Promise.race([
@@ -175,13 +176,9 @@ function AuthGate({ user, onDone }) {
     if (!cleanName) return;
     setLoading(true);
     setError("");
-
-    // Do not make entering Offbeat depend on a server-side Firebase token.
-    // The name is immediately usable in this session; Firestore sync is best effort.
     const nextProfile = { name: cleanName, email: user.email || "", photoURL: user.photoURL || "" };
     try { window.localStorage.setItem(`offbeat-profile-${user.uid}`, JSON.stringify(nextProfile)); } catch {}
     onDone(nextProfile);
-
     try {
       await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: cleanName }), timeout: 8000 });
     } catch (err) {
@@ -216,6 +213,7 @@ function Generator({ user, profile, onLogout }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [justCompleted, setJustCompleted] = useState(false);
   const [completedRefresh, setCompletedRefresh] = useState(0);
+  const [shareStatus, setShareStatus] = useState("");
   const code = useMemo(ticketCode, []);
 
   const locateMe = () => {
@@ -240,7 +238,7 @@ function Generator({ user, profile, onLogout }) {
 
   const generate = async () => {
     if (!city.trim()) { setErrorMsg("Enter a city or use Locate me first."); return; }
-    setLoading(true); setErrorMsg(""); setAdventure(null); setJustCompleted(false);
+    setLoading(true); setErrorMsg(""); setAdventure(null); setJustCompleted(false); setShareStatus("");
     try {
       const placesData = await apiFetch("/api/places", user, { method: "POST", body: JSON.stringify({ city: city.trim(), vibe, distance }) });
       if (!placesData.places?.length) throw new Error(`I couldn't find suitable ${vibe.toLowerCase()} places in ${city}. Try a nearby city or a larger distance.`);
@@ -261,6 +259,25 @@ function Generator({ user, profile, onLogout }) {
       await apiFetch("/api/completed", user, { method: "POST", body: JSON.stringify({ title: adventure.title, city, vibe, companion, stops: adventure.stops }) });
       setJustCompleted(true); setCompletedRefresh((value) => value + 1);
     } catch (err) { setErrorMsg(err?.message || "Could not save this adventure right now. Please try again."); }
+  };
+
+  const shareAdventure = async () => {
+    if (!adventure) return;
+    setShareStatus("");
+    const encoded = encodeAdventure(adventure, { city, vibe, companion, duration, distance });
+    const url = `${window.location.origin}/share?a=${encoded}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: adventure.title || "My Offbeat adventure", text: adventure.tagline || "An adventure from Offbeat.", url });
+        setShareStatus("Shared ✨");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("Link copied ✨");
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") setShareStatus("Could not share. Try again.");
+    }
+    window.setTimeout(() => setShareStatus(""), 2400);
   };
 
   const distanceProgress = ((distance - DISTANCE_MIN) / (DISTANCE_MAX - DISTANCE_MIN)) * 100;
@@ -300,7 +317,11 @@ function Generator({ user, profile, onLogout }) {
         {adventure && <article className={styles.ticket}>
           <div className={styles.ticketTop}><div className={styles.ticketCode}>BOARDING PASS · #{code}</div><h2 className={styles.ticketTitle}>{adventure.title}</h2><p className={styles.ticketSub}>{adventure.tagline}</p></div>
           <div className={styles.stops}>{(adventure.stops || []).map((stop, index) => <div className={styles.stop} key={`${stop.name}-${index}`}><span className={styles.stopNum}>{index + 1}</span><strong>{stop.name}</strong><div><a className={styles.map} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stop.name}, ${city}`)}`} target="_blank" rel="noopener noreferrer">📍 Open in Maps ↗</a></div>{stop.description && <p style={{ margin: "8px 0 0", color: "#707570", fontSize: ".82rem", lineHeight: 1.45 }}>{stop.description}</p>}</div>)}
-            {user ? <button className={styles.complete} onClick={markCompleted} disabled={justCompleted} type="button">{justCompleted ? "✓ Saved to Completed" : "Mark adventure completed"}</button> : <div className={styles.guestSave}>Want to keep this adventure? Sign in with Google and generate it again to save it to your profile.</div>}
+            <div style={{ display: "flex", gap: 9, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
+              <button className={styles.complete} onClick={shareAdventure} type="button">↗ Share adventure</button>
+              {shareStatus && <span style={{ fontSize: ".78rem", color: "#6f756f", fontWeight: 700 }}>{shareStatus}</span>}
+              {user ? <button className={styles.complete} onClick={markCompleted} disabled={justCompleted} type="button">{justCompleted ? "✓ Saved to Completed" : "Mark adventure completed"}</button> : <div className={styles.guestSave}>Want to keep this adventure? Sign in with Google and generate it again to save it to your profile.</div>}
+            </div>
           </div>
         </article>}
       </>}
@@ -329,8 +350,6 @@ export default function Home() {
       photoURL: user.photoURL || "",
     };
 
-    // A locally saved profile is authoritative for the current browser session.
-    // This removes the dependency on a server-side Firebase Admin configuration.
     let localProfile = null;
     try {
       const stored = window.localStorage.getItem(`offbeat-profile-${user.uid}`);
@@ -349,9 +368,7 @@ export default function Home() {
         setProfile(merged);
         try { window.localStorage.setItem(`offbeat-profile-${user.uid}`, JSON.stringify(merged)); } catch {}
       })
-      .catch(() => {
-        // The Firebase profile/local profile is enough to use the app.
-      });
+      .catch(() => {});
 
     return () => { active = false; };
   }, [user]);
