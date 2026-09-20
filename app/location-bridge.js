@@ -19,32 +19,33 @@ function clearLocationCookie() {
 
 export default function LocationBridge() {
   useEffect(() => {
-    const button = document.querySelector('[aria-label="Use my current location"]');
-    const cityInput = document.querySelector("#city");
-    if (!button || !navigator.geolocation) return undefined;
+    const attached = new WeakSet();
 
-    let locationWasRequested = false;
+    const attach = () => {
+      const button = document.querySelector('[aria-label="Use my current location"]');
+      const cityInput = document.querySelector("#city");
+      if (!button || attached.has(button) || !navigator.geolocation) return;
 
-    const handleLocate = () => {
-      locationWasRequested = true;
-      navigator.geolocation.getCurrentPosition(
-        ({ coords }) => setLocationCookie(coords.latitude, coords.longitude),
-        () => {},
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 }
-      );
+      const handleLocate = () => {
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => setLocationCookie(coords.latitude, coords.longitude),
+          () => {},
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 }
+        );
+      };
+
+      const handleManualCityChange = () => clearLocationCookie();
+
+      button.addEventListener("click", handleLocate);
+      cityInput?.addEventListener("input", handleManualCityChange);
+      attached.add(button);
     };
 
-    const handleManualCityChange = () => {
-      if (locationWasRequested) clearLocationCookie();
-    };
+    attach();
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
 
-    button.addEventListener("click", handleLocate);
-    cityInput?.addEventListener("input", handleManualCityChange);
-
-    return () => {
-      button.removeEventListener("click", handleLocate);
-      cityInput?.removeEventListener("input", handleManualCityChange);
-    };
+    return () => observer.disconnect();
   }, []);
 
   return null;
