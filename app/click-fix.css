@@ -23,22 +23,34 @@
 /* Saved adventures: keep the stop number separate from long stop names. */
 .stop {
   position: relative;
-  padding: 18px 0 20px 62px !important;
-  min-height: 52px;
+  padding: 18px 0 20px 44px !important;
+  min-height: 72px;
   box-sizing: border-box;
 }
 
 .stopNum {
   position: absolute !important;
-  left: 0;
-  top: 18px;
-  width: 46px !important;
-  height: 46px !important;
+  left: 0 !important;
+  top: 18px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
   margin: 0 !important;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  border-radius: 50% !important;
+  background: #17191d !important;
+  color: #fff !important;
+  font-size: .75rem !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  z-index: 2;
 }
 
 .stop strong {
@@ -104,12 +116,14 @@
   }
 
   .stop {
-    padding-left: 58px !important;
+    padding-left: 44px !important;
   }
 
   .stopNum {
-    width: 44px !important;
-    height: 44px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
   }
 
   .stop strong {
