@@ -1,0 +1,64 @@
+name: Apply Offbeat location button
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Locate me
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          page = Path('app/page.js')
+          css = Path('app/page.module.css')
+          p = page.read_text()
+          c = css.read_text()
+
+          if 'const [locating, setLocating]' not in p:
+              p = p.replace(
+                  '  const [loading, setLoading] = useState(false);\n',
+                  '  const [loading, setLoading] = useState(false);\n  const [locating, setLocating] = useState(false);\n  const [locationError, setLocationError] = useState("");\n',
+                  1,
+              )
+
+              marker = '  const generate = async () => {\n'
+              location_fn = '''  const locateMe = () => {\n    setLocationError("");\n\n    if (!navigator.geolocation) {\n      setLocationError("Location is not supported by this browser.");\n      return;\n    }\n\n    setLocating(true);\n\n    navigator.geolocation.getCurrentPosition(\n      async ({ coords }) => {\n        try {\n          const response = await fetch(\n            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}&zoom=10&addressdetails=1`,\n            { headers: { Accept: "application/json" } }\n          );\n\n          if (!response.ok) throw new Error("Could not find your city.");\n\n          const data = await response.json();\n          const address = data.address || {};\n          const detectedCity =\n            address.city ||\n            address.town ||\n            address.village ||\n            address.municipality ||\n            address.county;\n\n          if (!detectedCity) {\n            throw new Error("Could not identify your city from this location.");\n          }\n\n          setCity(detectedCity);\n        } catch (err) {\n          setLocationError(\n            err?.message ||\n              "Could not identify your location. You can enter your city manually."\n          );\n        } finally {\n          setLocating(false);\n        }\n      },\n      (error) => {\n        const message =\n          error?.code === 1\n            ? "Location permission was denied. You can enter your city manually."\n            : error?.code === 2\n              ? "Your location could not be determined. Please try again or enter your city manually."\n              : "Location took too long. Please try again.";\n\n        setLocationError(message);\n        setLocating(false);\n      },\n      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }\n    );\n  };\n\n'''
+              if marker not in p:
+                  raise SystemExit('Generator marker not found')
+              p = p.replace(marker, location_fn + marker, 1)
+
+              old = '''                <input\n                  id="city"\n                  className={styles.input}\n                  value={city}\n                  onChange={(event) =>\n                    setCity(event.target.value)\n                  }\n                  placeholder="Mumbai, Delhi, Jaipur..."\n                  onKeyDown={(event) => {\n                    if (event.key === "Enter") {\n                      generate();\n                    }\n                  }}\n                />'''
+              new = '''                <div className={styles.locationInputRow}>\n                  <input\n                    id="city"\n                    className={styles.input}\n                    value={city}\n                    onChange={(event) => {\n                      setCity(event.target.value);\n                      setLocationError("");\n                    }}\n                    placeholder="Mumbai, Delhi, Jaipur..."\n                    onKeyDown={(event) => {\n                      if (event.key === "Enter") {\n                        generate();\n                      }\n                    }}\n                  />\n                  <button\n                    className={styles.locateButton}\n                    onClick={locateMe}\n                    disabled={locating}\n                    type="button"\n                    aria-label="Use my current location"\n                  >\n                    {locating ? "Locating…" : "📍 Locate me"}\n                  </button>\n                </div>\n                <p className={styles.locationHint}>\n                  Use your current location to fill in your city automatically.\n                </p>\n                {locationError && (\n                  <p className={styles.locationError}>{locationError}</p>\n                )}'''
+              if old not in p:
+                  raise SystemExit('City input block not found')
+              p = p.replace(old, new, 1)
+
+              page.write_text(p)
+
+          if '.locationInputRow{' not in c:
+              c += '\n.locationInputRow{display:flex;gap:8px;align-items:stretch}.locationInputRow .input{min-width:0;flex:1}.locateButton{flex:0 0 auto;border:1px solid #d9d5cd;background:#fff;border-radius:14px;padding:0 13px;font-weight:850;color:#313633;cursor:pointer;white-space:nowrap}.locateButton:hover:not(:disabled){background:#f7f3eb;border-color:#bdb8ae}.locateButton:disabled{opacity:.6;cursor:wait}.locationHint{margin:7px 2px 0;color:#8a8e8a;font-size:.68rem;line-height:1.35}.locationError{margin:7px 2px 0;color:#9a3d32;font-size:.7rem;line-height:1.35;font-weight:700}\n'
+              css.write_text(c)
+          PY
+
+      - name: Remove one-time workflow and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/one-time-locate-me.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.js app/page.module.css .github/workflows/one-time-locate-me.yml
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Add Locate me to adventure generator [skip ci]"
+          git push
