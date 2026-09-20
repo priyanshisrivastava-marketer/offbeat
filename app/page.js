@@ -715,6 +715,8 @@ function Generator({ user, profile, onLogout }) {
   );
   const [adventure, setAdventure] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [justCompleted, setJustCompleted] =
     useState(false);
