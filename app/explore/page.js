@@ -62,7 +62,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [adventure, setAdventure] = useState(null);
-  const [code] = useState(() => Math.random().toString(36).slice(2, 8).toUpperCase());
+  const code = "OFFBEAT";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
