@@ -62,3 +62,5 @@
 @keyframes sheetIn{from{transform:translateY(30px);opacity:.5}to{transform:translateY(0);opacity:1}}
 @media(max-width:380px){.heroTitle{font-size:clamp(2.5rem,13vw,3.3rem)}.heroCopy{bottom:202px}.walk{bottom:174px}.primary{min-height:52px}.secondary{min-height:46px}}
 @media(prefers-reduced-motion:reduce){.heroImageCurrent,.heroImagePrevious,.walkStep{animation:none}.heroImageCurrent{opacity:1}.heroImagePrevious{opacity:0}.primary,.secondary,.dot{transition:none}}
+
+.locationInputRow{display:flex;gap:8px;align-items:stretch}.locationInputRow .input{min-width:0;flex:1}.locateButton{flex:0 0 auto;border:1px solid #d9d5cd;background:#fff;border-radius:14px;padding:0 13px;font-weight:850;color:#313633;cursor:pointer;white-space:nowrap}.locateButton:hover:not(:disabled){background:#f7f3eb;border-color:#bdb8ae}.locateButton:disabled{opacity:.6;cursor:wait}.locationHint{margin:7px 2px 0;color:#8a8e8a;font-size:.68rem;line-height:1.35}.locationError{margin:7px 2px 0;color:#9a3d32;font-size:.7rem;line-height:1.35;font-weight:700}

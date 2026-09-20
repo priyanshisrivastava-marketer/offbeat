@@ -181,6 +181,8 @@ function GoogleIcon() {
 
 function GoogleButton({ onError, compact = false }) {
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
 
   const login = async () => {
     setLoading(true);
@@ -721,6 +723,64 @@ function Generator({ user, profile, onLogout }) {
 
   const code = useMemo(ticketCode, []);
 
+  const locateMe = () => {
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Location is not supported by this browser.");
+      return;
+    }
+
+    setLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}&zoom=10&addressdetails=1`,
+            { headers: { Accept: "application/json" } }
+          );
+
+          if (!response.ok) throw new Error("Could not find your city.");
+
+          const data = await response.json();
+          const address = data.address || {};
+          const detectedCity =
+            address.city ||
+            address.town ||
+            address.village ||
+            address.municipality ||
+            address.county;
+
+          if (!detectedCity) {
+            throw new Error("Could not identify your city from this location.");
+          }
+
+          setCity(detectedCity);
+        } catch (err) {
+          setLocationError(
+            err?.message ||
+              "Could not identify your location. You can enter your city manually."
+          );
+        } finally {
+          setLocating(false);
+        }
+      },
+      (error) => {
+        const message =
+          error?.code === 1
+            ? "Location permission was denied. You can enter your city manually."
+            : error?.code === 2
+              ? "Your location could not be determined. Please try again or enter your city manually."
+              : "Location took too long. Please try again.";
+
+        setLocationError(message);
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  };
+
   const generate = async () => {
     if (!city.trim()) return;
 
@@ -914,20 +974,38 @@ function Generator({ user, profile, onLogout }) {
                   City
                 </label>
 
-                <input
-                  id="city"
-                  className={styles.input}
-                  value={city}
-                  onChange={(event) =>
-                    setCity(event.target.value)
-                  }
-                  placeholder="Mumbai, Delhi, Jaipur..."
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      generate();
-                    }
-                  }}
-                />
+                <div className={styles.locationInputRow}>
+                  <input
+                    id="city"
+                    className={styles.input}
+                    value={city}
+                    onChange={(event) => {
+                      setCity(event.target.value);
+                      setLocationError("");
+                    }}
+                    placeholder="Mumbai, Delhi, Jaipur..."
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        generate();
+                      }
+                    }}
+                  />
+                  <button
+                    className={styles.locateButton}
+                    onClick={locateMe}
+                    disabled={locating}
+                    type="button"
+                    aria-label="Use my current location"
+                  >
+                    {locating ? "Locating…" : "📍 Locate me"}
+                  </button>
+                </div>
+                <p className={styles.locationHint}>
+                  Use your current location to fill in your city automatically.
+                </p>
+                {locationError && (
+                  <p className={styles.locationError}>{locationError}</p>
+                )}
               </div>
 
               <div className={styles.section}>
