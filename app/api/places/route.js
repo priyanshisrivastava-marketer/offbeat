@@ -13,17 +13,40 @@ const VIBE_KEYWORDS = {
 
 export async function POST(req) {
   try {
-    const { city, vibe, distance } = await req.json();
+    const { city, vibe, distance, latitude, longitude } = await req.json();
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
     if (!apiKey) return Response.json({ error: "Missing GOOGLE_PLACES_API_KEY on the server" }, { status: 500 });
-    if (!city) return Response.json({ error: "City is required" }, { status: 400 });
+    if (!city && (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude)))) {
+      return Response.json({ error: "City or valid coordinates are required" }, { status: 400 });
+    }
 
     const rate = checkRateLimit(getClientKey(req, "places"));
     if (!rate.allowed) return rateLimitResponse(rate);
 
     const selectedDistance = Math.min(30, Math.max(1, Number(distance) || 5));
-    const query = `${VIBE_KEYWORDS[vibe] || "interesting things to do"} within ${selectedDistance} km of ${city}`;
+    const query = `${VIBE_KEYWORDS[vibe] || "interesting things to do"}${city ? ` in ${city}` : " nearby"}`;
+
+    const body = {
+      textQuery: query,
+      maxResultCount: 8,
+    };
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+
+    if (hasCoordinates) {
+      body.locationBias = {
+        circle: {
+          center: { latitude: lat, longitude: lng },
+          radius: selectedDistance * 1000,
+        },
+      };
+    } else {
+      body.textQuery = `${query} within ${selectedDistance} km`;
+    }
+
     const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
       headers: {
@@ -31,7 +54,7 @@ export async function POST(req) {
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.rating",
       },
-      body: JSON.stringify({ textQuery: query, maxResultCount: 8 }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
