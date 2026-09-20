@@ -44,11 +44,28 @@ function ticketCode() {
 
 async function apiFetch(path, user, options = {}) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), options.timeout || 30000);
+  const timeoutMs = options.timeout || 30000;
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   const { timeout: _timeout, ...fetchOptions } = options;
   const headers = { "Content-Type": "application/json", ...(fetchOptions.headers || {}) };
-  if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
+
   try {
+    // Getting an ID token must never trap the UI. Firebase can occasionally
+    // take longer than expected on mobile after a Google redirect. If token
+    // retrieval fails, make the request without it. Public endpoints still
+    // work, while protected endpoints can return a normal 401.
+    if (user) {
+      try {
+        const token = await Promise.race([
+          user.getIdToken(),
+          new Promise((_, reject) => window.setTimeout(() => reject(new Error("token-timeout")), 5000)),
+        ]);
+        if (token) headers.Authorization = `Bearer ${token}`;
+      } catch (tokenError) {
+        console.warn("Offbeat could not get a Firebase ID token:", tokenError);
+      }
+    }
+
     const response = await fetch(path, { ...fetchOptions, headers, signal: controller.signal });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.error) throw new Error(data.error || `Request failed (${response.status})`);
@@ -154,10 +171,24 @@ function AuthGate({ user, onDone }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const save = async () => {
-    const cleanName = name.trim(); if (!cleanName) return; setLoading(true); setError("");
-    try { const data = await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: cleanName }) }); onDone(data.profile || { name: cleanName, email: user.email || "", photoURL: user.photoURL || "" }); }
-    catch (err) { setError(err?.message || "Could not save your profile. Please try again."); }
-    finally { setLoading(false); }
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    setLoading(true);
+    setError("");
+
+    // Do not make entering Offbeat depend on a server-side Firebase token.
+    // The name is immediately usable in this session; Firestore sync is best effort.
+    const nextProfile = { name: cleanName, email: user.email || "", photoURL: user.photoURL || "" };
+    try { window.localStorage.setItem(`offbeat-profile-${user.uid}`, JSON.stringify(nextProfile)); } catch {}
+    onDone(nextProfile);
+
+    try {
+      await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: cleanName }), timeout: 8000 });
+    } catch (err) {
+      console.warn("Could not sync profile to the server:", err);
+    } finally {
+      setLoading(false);
+    }
   };
   return <main className={styles.authCard}><div className={styles.authInner}><Logo /><p className={styles.hello}>One tiny detail before you go.</p><div className={styles.panel}><label className={styles.label} htmlFor="name">What should Offbeat call you?</label><input id="name" className={`${styles.input} ${styles.profileInput}`} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") save(); }} placeholder="e.g. Priya" autoFocus /><button className={styles.generate} onClick={save} disabled={loading} type="button">{loading ? "Saving..." : "Let's go"}</button>{error && <p className={styles.error}>{error}</p>}</div></div></main>;
 }
@@ -298,22 +329,28 @@ export default function Home() {
       photoURL: user.photoURL || "",
     };
 
-    // Never make the whole logged-in app wait for Firestore.
-    setProfile(fallback);
-    setProfileLoading(!fallback.name);
+    // A locally saved profile is authoritative for the current browser session.
+    // This removes the dependency on a server-side Firebase Admin configuration.
+    let localProfile = null;
+    try {
+      const stored = window.localStorage.getItem(`offbeat-profile-${user.uid}`);
+      if (stored) localProfile = JSON.parse(stored);
+    } catch {}
+
+    const initialProfile = { ...fallback, ...(localProfile || {}) };
+    setProfile(initialProfile);
+    setProfileLoading(false);
 
     let active = true;
     apiFetch("/api/profile", user, { timeout: 8000 })
       .then((data) => {
         if (!active) return;
-        setProfile({ ...fallback, ...(data.profile || {}) });
+        const merged = { ...initialProfile, ...(data.profile || {}) };
+        setProfile(merged);
+        try { window.localStorage.setItem(`offbeat-profile-${user.uid}`, JSON.stringify(merged)); } catch {}
       })
       .catch(() => {
-        // The Firebase profile is enough to use the app. Saved preferences are optional.
-        if (active) setProfile(fallback);
-      })
-      .finally(() => {
-        if (active) setProfileLoading(false);
+        // The Firebase profile/local profile is enough to use the app.
       });
 
     return () => { active = false; };
