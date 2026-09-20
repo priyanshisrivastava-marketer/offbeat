@@ -23,6 +23,11 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body style={{ margin: 0 }}>
         {children}
+        <footer style={{ padding: "18px 20px 28px", textAlign: "center", background: "#f7f3eb", color: "#7b817e", fontSize: 12 }}>
+          <a href="/privacy" style={{ color: "inherit", fontWeight: 700 }}>Privacy Policy</a>
+          <span style={{ margin: "0 8px" }}>·</span>
+          <span>Offbeat</span>
+        </footer>
         <RegisterSW />
       </body>
     </html>
