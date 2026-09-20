@@ -1,3 +1,4 @@
+import "./offbeat-overrides.css";
 import RegisterSW from "./register-sw";
 
 export const metadata = {
