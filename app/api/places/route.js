@@ -1,3 +1,5 @@
+import { checkRateLimit, getClientKey, rateLimitResponse } from "../../../lib/rateLimit";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -16,6 +18,9 @@ export async function POST(req) {
 
     if (!apiKey) return Response.json({ error: "Missing GOOGLE_PLACES_API_KEY on the server" }, { status: 500 });
     if (!city) return Response.json({ error: "City is required" }, { status: 400 });
+
+    const rate = checkRateLimit(getClientKey(req, "places"));
+    if (!rate.allowed) return rateLimitResponse(rate);
 
     const query = `${VIBE_KEYWORDS[vibe] || "interesting things to do"} in ${city}`;
     const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
