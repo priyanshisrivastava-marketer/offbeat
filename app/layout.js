@@ -24,30 +24,6 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0 }}>
         {children}
         <RegisterSW />
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function () {
-            function fallbackNavigation(event) {
-              var target = event.target && event.target.closest ? event.target.closest('button') : null;
-              if (!target) return;
-              if (target.classList.contains('secondary')) {
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = '/explore?mode=guest';
-                return;
-              }
-              if (target.closest('.authCard') && target.classList.contains('generate')) {
-                var input = document.getElementById('name');
-                var value = input && input.value ? input.value.trim() : '';
-                if (!value) return;
-                try { localStorage.setItem('offbeat-pending-name', value); } catch (e) {}
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = '/explore?mode=profile';
-              }
-            }
-            document.addEventListener('click', fallbackNavigation, true);
-          })();
-        ` }} />
       </body>
     </html>
   );
