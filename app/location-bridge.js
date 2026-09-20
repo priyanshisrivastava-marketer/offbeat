@@ -6,6 +6,7 @@ const LAT_COOKIE = "offbeat_lat";
 const LNG_COOKIE = "offbeat_lng";
 const VIBE_COOKIE = "offbeat_vibe";
 const MAX_AGE = 1800;
+const PORTFOLIO_URL = "https://priyanshisrivastava-marketer.github.io/";
 
 function setCookie(name, value) {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
@@ -24,6 +25,14 @@ function clearLocationCookie() {
 
 function getCookie(name) {
   return document.cookie.split("; ").find((item) => item.startsWith(`${name}=`))?.split("=").slice(1).join("=");
+}
+
+function setupPortfolioLink() {
+  const link = document.querySelector('a[href*="priyanshisrivastava-marketer.github.io"]');
+  if (!link) return;
+  link.href = PORTFOLIO_URL;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
 }
 
 function setupVibes() {
@@ -97,6 +106,7 @@ export default function LocationBridge() {
         attached.add(cityInput);
       }
 
+      setupPortfolioLink();
       setupVibes();
     };
 
