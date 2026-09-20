@@ -46,7 +46,9 @@ function setupVibes() {
     shoppingButton.addEventListener("click", (event) => {
       event.preventDefault();
       setCookie(VIBE_COOKIE, "Shopping");
+      window.__offbeatShoppingProxy = true;
       foodButton.click();
+      window.__offbeatShoppingProxy = false;
       window.setTimeout(() => {
         foodButton.classList.remove("choiceActive");
         shoppingButton.classList.add("choiceActive");
@@ -63,6 +65,7 @@ function setupVibes() {
   if (!foodButton.dataset.offbeatBound) {
     foodButton.dataset.offbeatBound = "1";
     foodButton.addEventListener("click", () => {
+      if (window.__offbeatShoppingProxy) return;
       setCookie(VIBE_COOKIE, "Food");
       foodButton.classList.add("choiceActive");
       shoppingButton.classList.remove("choiceActive");
