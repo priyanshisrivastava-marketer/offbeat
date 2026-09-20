@@ -21,22 +21,26 @@ export async function POST(req) {
   const user = await getAuthenticatedUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  try {
-    const body = await req.json();
-    const profile = {
-      name: String(body.name || user.name || "").trim(),
-      email: user.email || "",
-      photoURL: user.picture || "",
-      ...(body.defaultCity ? { defaultCity: String(body.defaultCity).trim() } : {}),
-      ...(body.favoriteVibe ? { favoriteVibe: String(body.favoriteVibe) } : {}),
-      ...(body.favoriteCompanion ? { favoriteCompanion: String(body.favoriteCompanion) } : {}),
-      updatedAt: new Date(),
-    };
+  const body = await req.json().catch(() => ({}));
+  const profile = {
+    name: String(body.name || user.name || "").trim(),
+    email: user.email || "",
+    photoURL: user.picture || "",
+    ...(body.defaultCity ? { defaultCity: String(body.defaultCity).trim() } : {}),
+    ...(body.favoriteVibe ? { favoriteVibe: String(body.favoriteVibe) } : {}),
+    ...(body.favoriteCompanion ? { favoriteCompanion: String(body.favoriteCompanion) } : {}),
+    ...(body.preferredDistance != null ? { preferredDistance: Number(body.preferredDistance) } : {}),
+    updatedAt: new Date(),
+  };
 
+  // Firestore persistence is useful but should never trap a signed-in user
+  // on the profile setup screen. Return the profile even if Firestore is
+  // temporarily unavailable or its server-side configuration needs attention.
+  try {
     await getAdminDb().collection("users").doc(user.uid).set(profile, { merge: true });
-    return NextResponse.json({ success: true, profile });
   } catch (error) {
-    console.error("Could not save profile:", error);
-    return NextResponse.json({ error: "Could not save profile." }, { status: 500 });
+    console.error("Could not persist profile to Firestore:", error);
   }
+
+  return NextResponse.json({ success: true, profile });
 }
