@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-function decodeAdventure(value) {
+function decodeLegacyAdventure(value) {
   try {
     const json = decodeURIComponent(escape(atob(value)));
     return JSON.parse(json);
@@ -13,14 +13,52 @@ function decodeAdventure(value) {
 
 export default function SharedAdventurePage() {
   const [adventure, setAdventure] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const encoded = new URLSearchParams(window.location.search).get("a");
-    if (encoded) setAdventure(decodeAdventure(encoded));
+    let active = true;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    const encoded = params.get("a");
+
+    async function load() {
+      if (id) {
+        try {
+          const response = await fetch(`/api/share?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.adventure) throw new Error(data.error || "This adventure could not be found.");
+          if (active) setAdventure({ ...data.adventure, city: data.city, vibe: data.vibe, companion: data.companion, duration: data.duration, distance: data.distance });
+        } catch (err) {
+          if (active) setError(err?.message || "Could not open this adventure.");
+        } finally {
+          if (active) setLoading(false);
+        }
+        return;
+      }
+
+      if (encoded) {
+        const legacy = decodeLegacyAdventure(encoded);
+        if (active) {
+          if (legacy) setAdventure(legacy);
+          else setError("The share link is incomplete or invalid.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (active) {
+        setError("No adventure was included in this link.");
+        setLoading(false);
+      }
+    }
+
+    load();
+    return () => { active = false; };
   }, []);
 
-  const mapUrl = (stop) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stop.name}, ${adventure.city || ""}`)}`;
+  const mapUrl = (stop) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stop.name}, ${adventure?.city || ""}`)}`;
   const stops = useMemo(() => adventure?.stops || [], [adventure]);
 
   const copyLink = async () => {
@@ -31,8 +69,12 @@ export default function SharedAdventurePage() {
     } catch {}
   };
 
-  if (!adventure) {
-    return <main style={page}><div style={card}><div style={brand}>OFFBEAT</div><h1 style={title}>This adventure could not be opened.</h1><p style={muted}>The share link may be incomplete or expired.</p><a href="/" style={button}>Create your own adventure</a></div></main>;
+  if (loading) {
+    return <main style={page}><div style={card}><div style={brand}>OFFBEAT</div><p style={muted}>Opening your adventure…</p></div></main>;
+  }
+
+  if (error || !adventure) {
+    return <main style={page}><div style={card}><div style={brand}>OFFBEAT</div><h1 style={title}>This adventure could not be opened.</h1><p style={muted}>{error || "The share link may be incomplete or expired."}</p><a href="/" style={button}>Create your own adventure</a></div></main>;
   }
 
   return (
@@ -43,9 +85,9 @@ export default function SharedAdventurePage() {
         <h1 style={title}>{adventure.title || "Your Offbeat adventure"}</h1>
         {adventure.tagline && <p style={tagline}>{adventure.tagline}</p>}
         <div style={meta}>
-          {adventure.duration && <span>⏱️ {adventure.duration}</span>}
-          {adventure.distance != null && <span>📍 Up to {adventure.distance} km</span>}
-          {adventure.companion && <span>✦ {adventure.companion}</span>}
+          {adventure.duration && <span style={metaPill}>⏱️ {adventure.duration}</span>}
+          {adventure.distance != null && <span style={metaPill}>📍 Up to {adventure.distance} km</span>}
+          {adventure.companion && <span style={metaPill}>✦ {adventure.companion}</span>}
         </div>
         <div style={routeLabel}>YOUR STOPS</div>
         <div style={stopsWrap}>
