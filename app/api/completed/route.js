@@ -43,7 +43,7 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    const { title, city, vibe, companion, stops } = body;
+    const { title, city, vibe, companion, duration, distance, tagline, stops } = body;
 
     if (!title || !city || !vibe || !companion || !Array.isArray(stops)) {
       return NextResponse.json(
@@ -61,6 +61,9 @@ export async function POST(req) {
         city,
         vibe,
         companion,
+        duration: duration || null,
+        distance: Number.isFinite(Number(distance)) ? Number(distance) : null,
+        tagline: tagline || null,
         stops,
         completedAt: new Date(),
       });
