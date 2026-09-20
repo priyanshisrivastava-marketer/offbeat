@@ -1,3 +1,5 @@
+import { checkRateLimit, getClientKey, rateLimitResponse } from "../../../lib/rateLimit";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -25,6 +27,12 @@ export async function POST(req) {
     const { city, duration, vibe, companion, places } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return Response.json({ error: "Missing GEMINI_API_KEY on the server" }, { status: 500 });
+    if (!city || !duration || !vibe || !companion) {
+      return Response.json({ error: "City, time, vibe and companion are required" }, { status: 400 });
+    }
+
+    const rate = checkRateLimit(getClientKey(req, "adventure"));
+    if (!rate.allowed) return rateLimitResponse(rate);
 
     const placesList = (places || []).map((place) => `${place.name} (${place.address})`).join("\n");
     const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.\n\nReal nearby places to choose from:\n${placesList || "No places found."}`;
