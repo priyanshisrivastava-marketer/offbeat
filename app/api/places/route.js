@@ -1,9 +1,11 @@
+import { cookies } from "next/headers";
 import { checkRateLimit, getClientKey, rateLimitResponse } from "../../../lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VIBE_KEYWORDS = {
+  Food: "restaurants cafes bakeries food market local food street food",
   Chill: "cozy cafe park quiet spot",
   Social: "popular bar rooftop lively spot",
   Adventurous: "hiking trail unique outdoor activity",
@@ -26,14 +28,13 @@ export async function POST(req) {
 
     const selectedDistance = Math.min(30, Math.max(1, Number(distance) || 5));
     const query = `${VIBE_KEYWORDS[vibe] || "interesting things to do"}${city ? ` in ${city}` : " nearby"}`;
+    const body = { textQuery: query, maxResultCount: 8 };
 
-    const body = {
-      textQuery: query,
-      maxResultCount: 8,
-    };
-
-    const lat = Number(latitude);
-    const lng = Number(longitude);
+    const requestCookies = await cookies();
+    const cookieLat = requestCookies.get("offbeat_lat")?.value;
+    const cookieLng = requestCookies.get("offbeat_lng")?.value;
+    const lat = Number(latitude ?? cookieLat);
+    const lng = Number(longitude ?? cookieLng);
     const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 
     if (hasCoordinates) {
