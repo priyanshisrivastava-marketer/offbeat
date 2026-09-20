@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { checkRateLimit, getClientKey, rateLimitResponse } from "../../../lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ You will be given a city, a time budget (1–2 hours, 3–4 hours, Half day, or 
 
 For 1–2 hours, keep it compact with 1-2 nearby stops. For 3–4 hours, use a small sequence of 2-4 stops. For Half day, create a relaxed multi-stop experience. For Full day, create a fuller itinerary with enough variety and sensible pacing. Never claim that a route takes longer or shorter than the requested time budget.
 
-Tailor the experience to the requested vibe. Chill should feel calm and unhurried. Social should feel lively and shareable. Adventurous should prioritize active or unusual experiences. Creative should emphasize art, making, design, culture or visually interesting places. Shopping should prioritize markets, boutiques, local stores, street shopping or distinctive retail experiences from the provided list.
+Tailor the experience to the requested vibe. Food should focus on restaurants, cafes, bakeries, food markets, street food or distinctive local food experiences. Chill should feel calm and unhurried. Social should feel lively and shareable. Adventurous should prioritize active or unusual experiences. Creative should emphasize art, making, design, culture or visually interesting places. Shopping should prioritize markets, boutiques, local stores, street shopping or distinctive retail experiences from the provided list.
 
 Tailor tone to who it's for: Solo trips more introspective/exploratory; Friends group trips social/shareable; Partner trips a little romance or novelty; Family trips safe and multi-age-friendly.
 
@@ -34,8 +35,11 @@ export async function POST(req) {
     const rate = checkRateLimit(getClientKey(req, "adventure"));
     if (!rate.allowed) return rateLimitResponse(rate);
 
+    const requestCookies = await cookies();
+    const cookieVibe = requestCookies.get("offbeat_vibe")?.value;
+    const effectiveVibe = ["Food", "Chill", "Social", "Adventurous", "Creative", "Shopping"].includes(cookieVibe) ? cookieVibe : vibe;
     const placesList = (places || []).map((place) => `${place.name} (${place.address})`).join("\n");
-    const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${vibe}. Who it's for: ${companion}.\n\nReal nearby places to choose from:\n${placesList || "No places found."}`;
+    const userPrompt = `City: ${city}. Time budget: ${duration}. Vibe: ${effectiveVibe}. Who it's for: ${companion}.\n\nReal nearby places to choose from:\n${placesList || "No places found."}`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: "POST",
