@@ -11,6 +11,7 @@ const DISTANCE_MAX = 30;
 const DISTANCE_DEFAULT = 5;
 
 const VIBES = [
+  { label: "Food", icon: "🍜" },
   { label: "Chill", icon: "🌿" },
   { label: "Social", icon: "🎉" },
   { label: "Adventurous", icon: "🧭" },
@@ -42,12 +43,23 @@ function ticketCode() {
 }
 
 async function apiFetch(path, user, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeout || 30000);
+  const { timeout: _timeout, ...fetchOptions } = options;
+  const headers = { "Content-Type": "application/json", ...(fetchOptions.headers || {}) };
   if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
-  const response = await fetch(path, { ...options, headers });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data.error || "Request failed");
-  return data;
+  try {
+    const response = await fetch(path, { ...fetchOptions, headers, signal: controller.signal });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.error) throw new Error(data.error || `Request failed (${response.status})`);
+    return data;
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("This is taking longer than expected. Please try again.");
+    if (error instanceof TypeError) throw new Error("Could not connect to Offbeat. Please check your connection and try again.");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function Logo({ small = false }) {
@@ -97,7 +109,7 @@ function CuriousPanel({ onClose }) {
         <div className={styles.aboutSection}><span className={styles.aboutLabel}>About Offbeat</span><p>Offbeat is for people who want to discover new places, try something different and make the most of the time they have, without spending hours planning every little detail.</p></div>
         <div className={styles.aboutSection}><span className={styles.aboutLabel}>Why I&apos;m building it</span><p>I want to build a community of people who want to explore without spending hours in planning and executing. Sometimes you do not need a whole itinerary. You just need a few hours, a little curiosity and a reason to step out.</p></div>
         <div className={styles.aboutSection}><span className={styles.aboutLabel}>About me</span><p>I&apos;m Priyanshi, a marketer and builder who loves turning ideas into useful little experiences. Offbeat started from a simple thought: everyday life has more room for adventure than we think.</p></div>
-        <a className={styles.portfolioLink} href="https://priyanshisrivastava-marketer.github.io/priyanshi-srivastava.github.io/" target="_blank" rel="noopener noreferrer"><span>View my portfolio</span><span>↗</span></a>
+        <a className={styles.portfolioLink} href="https://priyanshisrivastava-marketer.github.io/" target="_blank" rel="noopener noreferrer"><span>View my portfolio</span><span>↗</span></a>
         <div className={styles.aboutSignoff}><strong>Happy exploring ✨</strong><span>See you somewhere offbeat.</span></div>
       </aside>
     </div>
@@ -163,7 +175,7 @@ function Generator({ user, profile, onLogout }) {
   const [tab, setTab] = useState("new");
   const [city, setCity] = useState(profile?.defaultCity || "");
   const [duration, setDuration] = useState(DURATIONS[0]);
-  const [distance, setDistance] = useState(DISTANCE_DEFAULT);
+  const [distance, setDistance] = useState(profile?.preferredDistance || DISTANCE_DEFAULT);
   const [vibe, setVibe] = useState(profile?.favoriteVibe || VIBES[0].label);
   const [companion, setCompanion] = useState(profile?.favoriteCompanion || COMPANIONS[0].label);
   const [adventure, setAdventure] = useState(null);
@@ -196,14 +208,15 @@ function Generator({ user, profile, onLogout }) {
   };
 
   const generate = async () => {
-    if (!city.trim()) return;
+    if (!city.trim()) { setErrorMsg("Enter a city or use Locate me first."); return; }
     setLoading(true); setErrorMsg(""); setAdventure(null); setJustCompleted(false);
     try {
-      const placesData = await apiFetch("/api/places", user, { method: "POST", body: JSON.stringify({ city, vibe, distance }) });
-      const advData = await apiFetch("/api/adventure", user, { method: "POST", body: JSON.stringify({ city, duration, distance, vibe, companion, places: placesData.places }) });
+      const placesData = await apiFetch("/api/places", user, { method: "POST", body: JSON.stringify({ city: city.trim(), vibe, distance }) });
+      if (!placesData.places?.length) throw new Error(`I couldn't find suitable ${vibe.toLowerCase()} places in ${city}. Try a nearby city or a larger distance.`);
+      const advData = await apiFetch("/api/adventure", user, { method: "POST", body: JSON.stringify({ city: city.trim(), duration, distance, vibe, companion, places: placesData.places }) });
       setAdventure(advData.adventure);
       if (user) {
-        try { await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: profile?.name || user.displayName || "", defaultCity: city, favoriteVibe: vibe, favoriteCompanion: companion, preferredDistance: distance }) }); }
+        try { await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: profile?.name || user.displayName || "", defaultCity: city.trim(), favoriteVibe: vibe, favoriteCompanion: companion, preferredDistance: distance }) }); }
         catch (err) { console.warn("Could not sync preferences", err); }
       }
     } catch (err) { setErrorMsg(err?.message || "Something went wrong. Please try again."); }
@@ -236,7 +249,6 @@ function Generator({ user, profile, onLogout }) {
             <p className={styles.locationHint}>Use your current location to fill in your city automatically.</p>{locationError && <p className={styles.locationError}>{locationError}</p>}
           </div>
           <div className={styles.section}><span className={styles.label}>Time</span><div className={styles.choiceGrid}>{DURATIONS.map((value) => <button key={value} className={`${styles.choice} ${duration === value ? styles.choiceActive : ""}`} onClick={() => setDuration(value)} type="button">⏱️ {value}</button>)}</div></div>
-
           <div className={styles.section}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
               <span className={styles.label} style={{ marginBottom: 0 }}>How far will you go?</span>
@@ -248,10 +260,9 @@ function Generator({ user, profile, onLogout }) {
             </div>
             <p style={{ margin: "7px 0 0", color: "#7b817e", fontSize: ".72rem" }}>Keep your adventure within roughly {distance} km.</p>
           </div>
-
           <div className={styles.section}><span className={styles.label}>Vibe</span><div className={styles.choiceGrid}>{VIBES.map((value) => <button key={value.label} className={`${styles.choice} ${vibe === value.label ? styles.choiceActive : ""}`} onClick={() => setVibe(value.label)} type="button">{value.icon} {value.label}</button>)}</div></div>
           <div className={styles.section}><span className={styles.label}>Who is coming?</span><div className={styles.choiceGrid}>{COMPANIONS.map((value) => <button key={value.label} className={`${styles.choice} ${companion === value.label ? styles.choiceActive : ""}`} onClick={() => setCompanion(value.label)} type="button">{value.icon} {value.label}</button>)}</div></div>
-          <button className={styles.generate} onClick={generate} disabled={loading || !city.trim()} type="button">{loading ? "Finding your route..." : "Find my Offbeat adventure"}</button>
+          <button className={styles.generate} onClick={generate} disabled={loading} type="button">{loading ? "Finding your route..." : "Find my Offbeat adventure"}</button>
           <p className={styles.guestNote}>{user ? "Your preferences can be remembered for next time." : "Guest mode is private and unsaved. Sign in only when you want to keep an adventure."}</p>
           {errorMsg && <p className={styles.error}>{errorMsg}</p>}
         </section>
@@ -271,16 +282,57 @@ export default function Home() {
   const [guest, setGuest] = useState(false);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
+
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
   useEffect(() => {
-    if (!user) { setProfile(null); setProfileLoading(false); return; }
-    let active = true; setProfileLoading(true);
-    apiFetch("/api/profile", user).then((data) => { if (!active) return; const fallback = { name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" }; setProfile({ ...fallback, ...(data.profile || {}) }); }).catch(() => { if (active) setProfile({ name: user.displayName || "", email: user.email || "", photoURL: user.photoURL || "" }); }).finally(() => { if (active) setProfileLoading(false); });
+    if (!user) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+
+    const fallback = {
+      name: user.displayName || "",
+      email: user.email || "",
+      photoURL: user.photoURL || "",
+    };
+
+    // Never make the whole logged-in app wait for Firestore.
+    setProfile(fallback);
+    setProfileLoading(!fallback.name);
+
+    let active = true;
+    apiFetch("/api/profile", user, { timeout: 8000 })
+      .then((data) => {
+        if (!active) return;
+        setProfile({ ...fallback, ...(data.profile || {}) });
+      })
+      .catch(() => {
+        // The Firebase profile is enough to use the app. Saved preferences are optional.
+        if (active) setProfile(fallback);
+      })
+      .finally(() => {
+        if (active) setProfileLoading(false);
+      });
+
     return () => { active = false; };
   }, [user]);
-  const logout = async () => { await signOut(auth); setProfile(null); setGuest(false); };
+
+  const enterGuestMode = () => {
+    setGuest(true);
+    setProfile(null);
+    setProfileLoading(false);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setProfile(null);
+    setGuest(false);
+  };
+
   if (user === undefined) return <main className={styles.authCard}><div className={styles.authInner}><Logo /><p className={styles.hello}>Loading Offbeat...</p></div></main>;
-  if (!user && !guest) return <Landing onGuest={() => setGuest(true)} />;
+  if (!user && !guest) return <Landing onGuest={enterGuestMode} />;
   if (user && profileLoading) return <main className={styles.authCard}><div className={styles.authInner}><Logo /><p className={styles.hello}>Getting your Offbeat ready...</p></div></main>;
   if (user && !profile?.name) return <AuthGate user={user} onDone={setProfile} />;
   return <Generator user={user || null} profile={profile} onLogout={logout} />;
