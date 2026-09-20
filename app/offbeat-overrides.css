@@ -79,6 +79,7 @@
   position: relative;
   padding: 18px 0 18px 44px !important;
   border-bottom: 1px dashed #d8d2c8 !important;
+  min-width: 0;
 }
 
 [class*="stop"]:not(:last-child)::before {
@@ -105,8 +106,9 @@
 [class*="stop"] strong {
   display: block;
   font-size: 1rem;
-  line-height: 1.25;
+  line-height: 1.3;
   color: #17191d;
+  overflow-wrap: anywhere;
 }
 
 [class*="stop"] p {
@@ -142,13 +144,42 @@
   line-height: 1.5;
 }
 
+/* Completed adventures should read like saved keepsakes, not a clipped copy of the generator. */
+[class*="tabs"] + [class*="ticket"] {
+  margin-top: 0;
+}
+
 @media (max-width: 520px) {
   [class*="ticketTop"] {
     padding: 22px 18px 21px !important;
+  }
+
+  [class*="ticketTop"] [class*="ticketTitle"] {
+    font-size: clamp(1.8rem, 8.5vw, 2.35rem) !important;
   }
 
   [class*="stops"] {
     padding-left: 18px !important;
     padding-right: 18px !important;
   }
+
+  [class*="stop"] {
+    padding-left: 44px !important;
+  }
+}
+
+/* Food is the first vibe visually. The existing fifth vibe is retained as the
+   underlying selection so existing preference data does not break while the
+   API maps that selection to food places. */
+[class*="choiceGrid"] > [class*="choice"]:nth-child(5) {
+  order: -1;
+}
+
+[class*="choiceGrid"] > [class*="choice"]:nth-child(5) {
+  font-size: 0;
+}
+
+[class*="choiceGrid"] > [class*="choice"]:nth-child(5)::after {
+  content: "🍜 Food";
+  font-size: 1rem;
 }
