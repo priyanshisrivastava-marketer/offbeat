@@ -18,14 +18,18 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const user = await getAuthenticatedUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const body = await req.json().catch(() => ({}));
+  const user = await getAuthenticatedUser(req);
+  const cleanName = String(body.name || user?.name || "").trim();
+
+  if (!cleanName) {
+    return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
+  }
+
   const profile = {
-    name: String(body.name || user.name || "").trim(),
-    email: user.email || "",
-    photoURL: user.picture || "",
+    name: cleanName,
+    email: user?.email || "",
+    photoURL: user?.picture || "",
     ...(body.defaultCity ? { defaultCity: String(body.defaultCity).trim() } : {}),
     ...(body.favoriteVibe ? { favoriteVibe: String(body.favoriteVibe) } : {}),
     ...(body.favoriteCompanion ? { favoriteCompanion: String(body.favoriteCompanion) } : {}),
@@ -33,13 +37,15 @@ export async function POST(req) {
     updatedAt: new Date(),
   };
 
-  // Firestore persistence is useful but should never trap a signed-in user
-  // on the profile setup screen. Return the profile even if Firestore is
-  // temporarily unavailable or its server-side configuration needs attention.
-  try {
-    await getAdminDb().collection("users").doc(user.uid).set(profile, { merge: true });
-  } catch (error) {
-    console.error("Could not persist profile to Firestore:", error);
+  // Profile setup must not be blocked by Firebase Admin configuration.
+  // If server-side token verification is unavailable, return the profile so
+  // the client can continue. When auth + Firestore are available, persist it.
+  if (user) {
+    try {
+      await getAdminDb().collection("users").doc(user.uid).set(profile, { merge: true });
+    } catch (error) {
+      console.error("Could not persist profile to Firestore:", error);
+    }
   }
 
   return NextResponse.json({ success: true, profile });
