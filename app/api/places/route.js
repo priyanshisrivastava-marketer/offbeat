@@ -6,6 +6,7 @@ const VIBE_KEYWORDS = {
   Social: "popular bar rooftop lively spot",
   Adventurous: "hiking trail unique outdoor activity",
   Creative: "art gallery museum workshop studio",
+  Shopping: "local market shopping street boutique independent stores craft market",
 };
 
 export async function POST(req) {

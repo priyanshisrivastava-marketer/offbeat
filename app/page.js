@@ -5,13 +5,14 @@ import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebaseClient";
 import styles from "./page.module.css";
 
-const DURATIONS = ["2 hours", "4 hours"];
+const DURATIONS = ["1–2 hours", "3–4 hours", "Half day", "Full day"];
 
 const VIBES = [
   { label: "Chill", icon: "🌿" },
   { label: "Social", icon: "🎉" },
   { label: "Adventurous", icon: "🧭" },
   { label: "Creative", icon: "🎨" },
+  { label: "Shopping", icon: "🛍️" },
 ];
 
 const COMPANIONS = [
@@ -1014,7 +1015,7 @@ function Generator({ user, profile, onLogout }) {
               >
                 {loading
                   ? "Finding your route..."
-                  : "Create my Offbeat"}
+                  : "Find my Offbeat adventure"}
               </button>
 
               <p className={styles.guestNote}>
