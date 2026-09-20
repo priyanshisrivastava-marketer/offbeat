@@ -1,4 +1,5 @@
 import "./offbeat-overrides.css";
+import "./click-fix.css";
 import RegisterSW from "./register-sw";
 
 export const metadata = {
