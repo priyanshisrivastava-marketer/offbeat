@@ -19,3 +19,100 @@
   position: relative;
   z-index: 1001;
 }
+
+/* Saved adventures: keep the stop number separate from long stop names. */
+.stop {
+  position: relative;
+  padding: 18px 0 20px 62px !important;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+
+.stopNum {
+  position: absolute !important;
+  left: 0;
+  top: 18px;
+  width: 46px !important;
+  height: 46px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.stop strong {
+  display: block;
+  margin: 0 0 7px;
+  font-size: 1.02rem;
+  line-height: 1.28;
+  letter-spacing: -.015em;
+  color: #17191d;
+  overflow-wrap: anywhere;
+}
+
+.stop .map {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 8px 12px;
+  border: 1px solid #d8e3e0;
+  border-radius: 999px;
+  background: #f7fbfa;
+  color: #2b6e6b;
+  text-decoration: none;
+  font-weight: 900;
+  font-size: .76rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.stops:before {
+  content: "YOUR STOPS";
+  display: block;
+  padding: 5px 0 8px;
+  color: #858b87;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.ticketTop:after {
+  content: "A little time well spent. Here’s your saved route.";
+  display: block;
+  margin-top: 12px;
+  color: rgba(21,23,27,.62);
+  font-size: .78rem;
+  line-height: 1.4;
+  font-weight: 700;
+  max-width: 320px;
+}
+
+.ticketTitle {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .ticketTop {
+    padding: 22px 20px 18px;
+  }
+
+  .stops {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .stop {
+    padding-left: 58px !important;
+  }
+
+  .stopNum {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .stop strong {
+    font-size: .98rem;
+  }
+}
