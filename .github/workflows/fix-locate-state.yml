@@ -1,0 +1,47 @@
+name: Fix Locate me state
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix Generator location state
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/page.js')
+          text = path.read_text()
+
+          marker = '  const [loading, setLoading] = useState(false);\n  const [errorMsg, setErrorMsg] = useState("");'
+          replacement = '  const [loading, setLoading] = useState(false);\n  const [locating, setLocating] = useState(false);\n  const [locationError, setLocationError] = useState("");\n  const [errorMsg, setErrorMsg] = useState("");'
+
+          if marker not in text:
+              raise SystemExit('Generator state marker not found')
+
+          text = text.replace(marker, replacement, 1)
+          path.write_text(text)
+          PY
+
+      - name: Commit fix and remove workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-locate-state.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.js .github/workflows/fix-locate-state.yml
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Fix Locate me generator state [skip ci]"
+          git push
