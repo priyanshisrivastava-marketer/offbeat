@@ -27,11 +27,12 @@ export async function POST(req) {
     if (!rate.allowed) return rateLimitResponse(rate);
 
     const selectedDistance = Math.min(30, Math.max(1, Number(distance) || 5));
-    const effectiveVibe = vibe === "Shopping" ? "Food" : vibe;
+    const requestCookies = await cookies();
+    const cookieVibe = requestCookies.get("offbeat_vibe")?.value;
+    const effectiveVibe = cookieVibe && VIBE_KEYWORDS[cookieVibe] ? cookieVibe : vibe;
     const query = `${VIBE_KEYWORDS[effectiveVibe] || "interesting things to do"}${city ? ` in ${city}` : " nearby"}`;
     const body = { textQuery: query, maxResultCount: 8 };
 
-    const requestCookies = await cookies();
     const cookieLat = requestCookies.get("offbeat_lat")?.value;
     const cookieLng = requestCookies.get("offbeat_lng")?.value;
     const lat = Number(latitude ?? cookieLat);
