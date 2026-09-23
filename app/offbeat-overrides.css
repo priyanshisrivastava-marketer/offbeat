@@ -104,10 +104,188 @@
 [class*="guestSave"] { margin-top: 18px !important; border: 1px solid #e5ddd0; line-height: 1.5; }
 [class*="tabs"] + [class*="ticket"] { margin-top: 0; }
 
+/* Global box sizing for the logged-in app.
+   This prevents 100% width panels + padding from overflowing the mobile viewport. */
+[class*="generatorWrap"],
+[class*="generatorWrap"] *,
+[class*="generatorWrap"] *::before,
+[class*="generatorWrap"] *::after {
+  box-sizing: border-box;
+}
+
+[class*="generatorWrap"] {
+  overflow-x: hidden !important;
+}
+
+[class*="generator"] {
+  width: 100% !important;
+  max-width: 1320px;
+  min-width: 0;
+}
+
+[class*="appHeader"],
+[class*="tabs"],
+[class*="panel"],
+[class*="completedList"],
+[class*="community"],
+[class*="ticket"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[class*="tabs"] {
+  overflow: hidden;
+}
+
+[class*="panel"] {
+  overflow: hidden;
+}
+
+[class*="choiceGrid"] > *,
+[class*="locationInputRow"] > *,
+[class*="locationRow"] > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[class*="input"] {
+  max-width: 100%;
+}
+
+/* Keep the background photography visible without letting it wash out the form. */
+[class*="generatorWrap"]::before {
+  background-position: center center !important;
+  background-size: cover !important;
+  opacity: .48 !important;
+  filter: saturate(1.05) contrast(1.03) !important;
+}
+
+[class*="generatorWrap"]::after {
+  background: linear-gradient(
+    180deg,
+    rgba(247,243,235,.28) 0%,
+    rgba(247,243,235,.16) 48%,
+    rgba(247,243,235,.34) 100%
+  ) !important;
+}
+
 @media (max-width: 520px) {
+  [class*="generatorWrap"] {
+    width: 100%;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  [class*="generator"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  [class*="appHeader"] {
+    width: 100%;
+    margin-bottom: 12px !important;
+    align-items: center;
+  }
+
+  [class*="miniBrand"] {
+    max-width: 142px;
+    height: 34px;
+  }
+
+  [class*="tabs"] {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-bottom: 14px !important;
+    padding: 4px !important;
+    gap: 0;
+  }
+
+  [class*="tab"] {
+    min-width: 0 !important;
+    width: 100%;
+    min-height: 46px !important;
+    padding: 8px 4px !important;
+    font-size: .72rem !important;
+    white-space: nowrap;
+  }
+
+  [class*="panel"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 18px 15px !important;
+    border-radius: 22px !important;
+  }
+
+  [class*="locationInputRow"] {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [class*="locationInputRow"] [class*="input"],
+  [class*="locateButton"],
+  [class*="locationButton"] {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  [class*="choiceGrid"] {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  [class*="choice"] {
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  [class*="distanceRow"] {
+    width: 100%;
+    max-width: 100%;
+    padding: 15px !important;
+  }
+
+  [class*="range"] {
+    display: block;
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  [class*="ticket"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   [class*="ticketTop"] { padding: 22px 18px 21px !important; }
   [class*="ticketTop"] [class*="ticketTitle"] { font-size: clamp(1.8rem, 8.5vw, 2.35rem) !important; }
   [class*="stops"] { padding-left: 18px !important; padding-right: 18px !important; }
   [class*="stop"] { padding-left: 44px !important; }
   [class*="stopNum"] { width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; padding: 0 !important; }
+
+  [class*="communityGrid"] {
+    width: 100%;
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Keep the photo present on phones, but soften it behind the content. */
+  [class*="generatorWrap"]::before {
+    opacity: .38 !important;
+    background-position: center center !important;
+  }
+
+  [class*="generatorWrap"]::after {
+    background: linear-gradient(
+      180deg,
+      rgba(247,243,235,.30),
+      rgba(247,243,235,.18) 48%,
+      rgba(247,243,235,.38)
+    ) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  [class*="tabs"] { padding: 3px !important; }
+  [class*="tab"] { font-size: .66rem !important; padding-left: 2px !important; padding-right: 2px !important; }
+  [class*="panel"] { padding-left: 13px !important; padding-right: 13px !important; }
 }
