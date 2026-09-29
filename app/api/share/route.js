@@ -19,7 +19,7 @@ export async function POST(req) {
     }
 
     const db = getAdminDb();
-    let id = makeShareId();
+    const id = makeShareId();
     const ref = db.collection("shared_adventures").doc(id);
 
     await ref.set({
@@ -40,7 +40,8 @@ export async function POST(req) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    return Response.json({ id, url: `/share?id=${encodeURIComponent(id)}` });
+    // The adventure data stays in Firestore, so the shared URL only needs the tiny ID.
+    return Response.json({ id, url: `/s/${encodeURIComponent(id)}` });
   } catch (error) {
     console.error("Share adventure error:", error);
     return Response.json({ error: "Could not create a share link. Please try again." }, { status: 500 });
