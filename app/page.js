@@ -39,7 +39,6 @@ const HEROES = [
 ];
 
 function ticketCode() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
-function encodeAdventure(adventure, meta) { const payload = { ...adventure, ...meta, stops: adventure?.stops || [] }; return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload))))); }
 
 async function apiFetch(path, user, options = {}) {
   const controller = new AbortController();
@@ -101,7 +100,29 @@ function Generator({ user, profile, onLogout }) {
   };
   const generate = async () => { if (!city.trim()) { setErrorMsg("Enter a city or use Locate me first."); return; } setLoading(true); setErrorMsg(""); setAdventure(null); setJustCompleted(false); setShareStatus(""); try { const placesData = await apiFetch("/api/places", user, { method: "POST", body: JSON.stringify({ city: city.trim(), vibe, distance }) }); if (!placesData.places?.length) throw new Error(`I couldn't find suitable ${vibe.toLowerCase()} places in ${city}. Try a nearby city or a larger distance.`); const advData = await apiFetch("/api/adventure", user, { method: "POST", body: JSON.stringify({ city: city.trim(), duration, distance, vibe, companion, places: placesData.places }) }); setAdventure(advData.adventure); if (user) { try { await apiFetch("/api/profile", user, { method: "POST", body: JSON.stringify({ name: profile?.name || user.displayName || "", defaultCity: city.trim(), favoriteVibe: vibe, favoriteCompanion: companion, preferredDistance: distance }) }); } catch (err) { console.warn("Could not sync preferences", err); } } } catch (err) { setErrorMsg(err?.message || "Something went wrong. Please try again."); } finally { setLoading(false); } };
   const markCompleted = async () => { if (!user || !adventure || justCompleted) return; setErrorMsg(""); try { await apiFetch("/api/completed", user, { method: "POST", body: JSON.stringify({ title: adventure.title, city, vibe, companion, stops: adventure.stops }) }); setJustCompleted(true); setCompletedRefresh((value) => value + 1); } catch (err) { setErrorMsg(err?.message || "Could not save this adventure right now. Please try again."); } };
-  const shareAdventure = async () => { if (!adventure) return; setShareStatus(""); const encoded = encodeAdventure(adventure, { city, vibe, companion, duration, distance }); const url = `${window.location.origin}/share?a=${encoded}`; try { if (navigator.share) { await navigator.share({ title: adventure.title || "My Offbeat adventure", text: adventure.tagline || "An adventure from Offbeat.", url }); setShareStatus("Shared ✨"); } else { await navigator.clipboard.writeText(url); setShareStatus("Link copied ✨"); } } catch (error) { if (error?.name !== "AbortError") setShareStatus("Could not share. Try again."); } window.setTimeout(() => setShareStatus(""), 2400); };
+  const shareAdventure = async () => {
+    if (!adventure) return;
+    setShareStatus("");
+    try {
+      const shareData = await apiFetch("/api/share", user, {
+        method: "POST",
+        body: JSON.stringify({ adventure, city, vibe, companion, duration, distance }),
+        timeout: 10000,
+      });
+      if (!shareData?.url) throw new Error("Could not create a share link.");
+      const url = new URL(shareData.url, window.location.origin).toString();
+      if (navigator.share) {
+        await navigator.share({ title: adventure.title || "My Offbeat adventure", text: adventure.tagline || "An adventure from Offbeat.", url });
+        setShareStatus("Shared ✨");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("Link copied ✨");
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") setShareStatus(error?.message || "Could not share. Try again.");
+    }
+    window.setTimeout(() => setShareStatus(""), 2400);
+  };
   const distanceProgress = ((distance - DISTANCE_MIN) / (DISTANCE_MAX - DISTANCE_MIN)) * 100;
   return <main className={styles.generatorWrap}><div className={styles.generator}>
     <header className={styles.appHeader}><Logo small/><div><div className={styles.hello}>{user ? `Hi, ${profile?.name || user.displayName || "there"}` : "Guest mode"}</div>{user && <button className={styles.signout} onClick={onLogout} type="button">Sign out</button>}</div></header>
