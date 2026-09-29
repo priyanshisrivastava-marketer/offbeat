@@ -37,7 +37,7 @@ async function shortenOffbeatUrl(url) {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.id) return url;
-    return `${window.location.origin}/share?id=${encodeURIComponent(data.id)}`;
+    return `${window.location.origin}/s/${encodeURIComponent(data.id)}`;
   } catch {
     return url;
   }
