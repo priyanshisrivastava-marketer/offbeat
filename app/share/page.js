@@ -63,24 +63,31 @@ export default function SharedAdventurePage() {
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const current = new URL(window.location.href);
+      if (current.pathname === "/share" && current.searchParams.has("id")) {
+        current.pathname = `/s/${encodeURIComponent(current.searchParams.get("id"))}`;
+        current.search = "";
+      }
+      await navigator.clipboard.writeText(current.toString());
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {}
   };
 
+  const logo = <img src="/brand/offbeat-mark.png" alt="Offbeat" style={logoImage} />;
+
   if (loading) {
-    return <main style={page}><div style={card}><div style={brand}>OFFBEAT</div><p style={muted}>Opening your adventure…</p></div></main>;
+    return <main style={page}><div style={card}>{logo}<p style={muted}>Opening your adventure…</p></div></main>;
   }
 
   if (error || !adventure) {
-    return <main style={page}><div style={card}><div style={brand}>OFFBEAT</div><h1 style={title}>This adventure could not be opened.</h1><p style={muted}>{error || "The share link may be incomplete or expired."}</p><a href="/" style={button}>Create your own adventure</a></div></main>;
+    return <main style={page}><div style={card}>{logo}<h1 style={title}>This adventure could not be opened.</h1><p style={muted}>{error || "The share link may be incomplete or expired."}</p><a href="/" style={button}>Create your own adventure</a></div></main>;
   }
 
   return (
     <main style={page}>
       <div style={card}>
-        <div style={top}><div style={brand}>OFFBEAT</div><span style={badge}>SHARED ADVENTURE</span></div>
+        <div style={top}><div>{logo}</div><span style={badge}>SHARED ADVENTURE</span></div>
         <p style={eyebrow}>{adventure.city || "Somewhere offbeat"}{adventure.vibe ? ` · ${adventure.vibe}` : ""}</p>
         <h1 style={title}>{adventure.title || "Your Offbeat adventure"}</h1>
         {adventure.tagline && <p style={tagline}>{adventure.tagline}</p>}
@@ -115,7 +122,7 @@ export default function SharedAdventurePage() {
 const page = { minHeight: "100vh", background: "#f4f0e8", padding: "28px 16px", color: "#17191d", fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif" };
 const card = { maxWidth: 680, margin: "0 auto", background: "#fff", borderRadius: 28, padding: "24px 20px 22px", boxShadow: "0 16px 50px rgba(23,25,29,.10)" };
 const top = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 };
-const brand = { fontSize: 13, fontWeight: 900, letterSpacing: ".14em" };
+const logoImage = { display: "block", width: 150, maxWidth: "46vw", height: "auto", objectFit: "contain", objectPosition: "left center" };
 const badge = { fontSize: 10, fontWeight: 800, letterSpacing: ".08em", padding: "7px 9px", borderRadius: 999, background: "#f1ece2" };
 const eyebrow = { margin: "30px 0 8px", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "#77736b" };
 const title = { margin: 0, fontSize: "clamp(32px, 8vw, 54px)", lineHeight: 1.02, letterSpacing: "-.04em" };
